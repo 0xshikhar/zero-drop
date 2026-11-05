@@ -22,6 +22,11 @@ export type PinnerEndpoint = {
   kind: PinnerKind;
   /** Base URL without a trailing slash requirement (one is tolerated). */
   url: string;
+  /**
+   * Read gateway base URL. Kubo serves its HTTP API and its gateway on different ports, so a kubo
+   * endpoint needs this for resolve (`GET {gatewayUrl}/ipfs/<cid>`). Zerodrop pinners serve both on `url`.
+   */
+  gatewayUrl?: string;
 };
 
 /** Documents are capped at 1 MiB everywhere (publish, pinner server, resolve). */

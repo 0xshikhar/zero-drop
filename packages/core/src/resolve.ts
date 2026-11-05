@@ -105,7 +105,11 @@ export async function resolveDocument(input: ResolveInput): Promise<ResolveResul
     seen.add(url);
     targets.push({ id, url });
   };
-  for (const endpoint of input.endpoints) add(endpoint.id, endpoint.url);
+  for (const endpoint of input.endpoints) {
+    // A Kubo API port does not serve /ipfs; its gateway is a separate base URL. Skip kubo endpoints without one.
+    const base = endpoint.kind === "kubo" ? endpoint.gatewayUrl : endpoint.url;
+    if (base) add(endpoint.id, base);
+  }
   for (const gateway of input.gateways ?? []) add(gateway, gateway);
 
   const fail = (reason: string, attempts: ResolveAttempt[] = []): ResolveResult => summarize({ ok: false, cid, reason, attempts });
