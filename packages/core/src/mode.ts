@@ -1,38 +1,77 @@
 /**
  * What this build actually does. The UI shows these labels, so each one must stay true.
+ *
+ * The labels follow the ACTIVE deployment (verifierKind, directRecordEnabled) and the live network client
+ * (mode and boot state). The app calls `setDeploymentInfo` whenever the user picks a deployment; nothing here
+ * guesses. Before any call the default is the most cautious reading: a mock verifier, direct posting.
  */
-export type ProofMode = "mock" | "semaphore";
-/**
- * "semaphore": real Semaphore proofs are generated and verified on the local chain (anvil, 31337).
- * "mock" is kept only for tests and for disclosures that must never claim verification.
- */
-export const PROOF_MODE: ProofMode = "semaphore";
+import { network, type NetworkClient } from "./net";
 
+export type ProofMode = "mock" | "semaphore";
 export type TransportMode = "direct" | "frame";
-/**
- * "direct": one ordinary transaction from the poster's address. The poster address is visible on chain.
- * "frame": EIP-8141 frame transaction, which hides the payer. NOT verified against the devnet yet.
- */
-export const TRANSPORT_MODE: TransportMode = "direct";
+export type VerifierKind = ProofMode;
+
+export type DeploymentInfo = {
+  /** "mock": MockVerifier, accepts any proof. "semaphore": the Groth16 verifier adapter. */
+  verifierKind: VerifierKind;
+  /** True when anyone may call ZeroDrop.record directly (local development). */
+  directRecordEnabled: boolean;
+};
+
+let deployment: DeploymentInfo = { verifierKind: "mock", directRecordEnabled: true };
+
+/** Tells the status labels which deployment is active. */
+export function setDeploymentInfo(info: DeploymentInfo): void {
+  deployment = { verifierKind: info.verifierKind, directRecordEnabled: info.directRecordEnabled };
+}
+
+export function getDeploymentInfo(): DeploymentInfo {
+  return { ...deployment };
+}
+
+/** The proof mode of the active deployment. */
+export function currentProofMode(): ProofMode {
+  return deployment.verifierKind;
+}
 
 export const PROOF_LABELS: Record<ProofMode, string> = {
-  mock: "Mock proof (no membership check)",
+  mock: "Mock proof (not a membership proof)",
   semaphore: "Semaphore proof (real, on a local chain)",
 };
 
 export const TRANSPORT_LABELS: Record<TransportMode, string> = {
-  direct: "Direct transaction: poster address visible on chain",
-  frame: "Frame transaction (EIP-8141): not yet verified against the devnet",
+  direct: "Direct transaction: poster address visible",
+  frame: "Frame transaction (EIP-8141): not verified against a devnet",
 };
 
-/** Anon-RPC is not integrated in this build, so every request leaves the machine directly. */
-export const ANON_NETWORK_LABEL = "Anon-RPC not integrated";
+/** Label for the network route, from the client's mode and the boot state of its anonymous transport. */
+export function anonNetworkLabel(client: NetworkClient = network): string {
+  if (client.mode === "direct") return "Not routed (direct)";
+  const state = client.bootState;
+  switch (state.status) {
+    case "ready":
+      return "Anon-RPC: ready";
+    case "booting":
+      return state.percent !== undefined ? `Anon-RPC: booting ${state.percent}%` : "Anon-RPC: booting";
+    case "failed":
+      return `Anon-RPC: failed: ${state.reason}`;
+    default:
+      return "Anon-RPC: not started";
+  }
+}
 
-export function statusLabels(): { proof: string; transport: string; anonNetwork: string } {
+export type StatusLabelsInput = {
+  /** The transport the user chose. Defaults to "direct" when the deployment allows direct records, else "frame". */
+  transport?: TransportMode;
+  net?: NetworkClient;
+};
+
+export function statusLabels(input: StatusLabelsInput = {}): { proof: string; transport: string; anonNetwork: string } {
+  const transport = input.transport ?? (deployment.directRecordEnabled ? "direct" : "frame");
   return {
-    proof: PROOF_LABELS[PROOF_MODE],
-    transport: TRANSPORT_LABELS[TRANSPORT_MODE],
-    anonNetwork: ANON_NETWORK_LABEL,
+    proof: PROOF_LABELS[deployment.verifierKind],
+    transport: TRANSPORT_LABELS[transport],
+    anonNetwork: anonNetworkLabel(input.net),
   };
 }
 
@@ -42,7 +81,7 @@ export function statusLabels(): { proof: string; transport: string; anonNetwork:
  */
 export function proofStatus() {
   return {
-    label: PROOF_LABELS[PROOF_MODE],
-    verified: PROOF_MODE === "semaphore",
+    label: PROOF_LABELS[deployment.verifierKind],
+    verified: deployment.verifierKind === "semaphore",
   };
 }

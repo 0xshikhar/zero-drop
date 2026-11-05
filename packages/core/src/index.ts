@@ -1,9 +1,12 @@
 export * from "./content";
+export * from "./pdf";
+export * from "./vault";
 export * from "./mode";
 export * from "./net";
 export * from "./identity";
 export * from "./group";
 export * from "./prove";
+export * from "./mockprove";
 export * from "./verify-proof";
 export * from "./chain";
 export * from "./l1";
@@ -12,3 +15,4 @@ export * from "./pin";
 export * from "./resolve";
 export * from "./bundle";
 export * from "./settings";
+export * from "./storageproof";

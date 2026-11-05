@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useRoute } from "../lib/router";
 import { restoreIdentity, type Identity } from "../lib/session";
 import { Shell } from "./Shell";
-import { DropPage, type TransportChoice } from "./DropPage";
+import { DropPage } from "./DropPage";
 import { ReaderPage } from "./ReaderPage";
 import { GroupsPage } from "./GroupsPage";
 import { SettingsPage } from "./SettingsPage";
@@ -12,7 +12,6 @@ export function App() {
   const route = useRoute();
   const [identity, setIdentity] = useState<Identity>();
   const [identityChecked, setIdentityChecked] = useState(false);
-  const [transport, setTransport] = useState<TransportChoice>("direct");
 
   useEffect(() => {
     let cancelled = false;
@@ -29,7 +28,7 @@ export function App() {
   let page;
   switch (route.name) {
     case "drop":
-      page = <DropPage identity={identity} setIdentity={setIdentity} identityChecked={identityChecked} transport={transport} />;
+      page = <DropPage identity={identity} setIdentity={setIdentity} identityChecked={identityChecked} />;
       break;
     case "reader":
       page = <ReaderPage key={route.ref} reference={route.ref} />;
@@ -38,7 +37,7 @@ export function App() {
       page = <GroupsPage identity={identity} />;
       break;
     case "settings":
-      page = <SettingsPage identity={identity} setIdentity={setIdentity} transport={transport} setTransport={setTransport} />;
+      page = <SettingsPage identity={identity} setIdentity={setIdentity} />;
       break;
     case "about":
       page = <AboutPage />;

@@ -84,12 +84,14 @@ function cleanPinners(value: unknown, fallback: PinnerEndpoint[]): PinnerEndpoin
   const out: PinnerEndpoint[] = [];
   for (const item of value) {
     if (typeof item !== "object" || item === null) continue;
-    const { id, kind, url } = item as Record<string, unknown>;
+    const { id, kind, url, gatewayUrl } = item as Record<string, unknown>;
     if (typeof id !== "string" || id.trim() === "" || ids.has(id)) continue;
     if (kind !== "kubo" && kind !== "zerodrop") continue;
     if (typeof url !== "string" || !isHttpUrl(url.trim())) continue;
     ids.add(id);
-    out.push({ id, kind, url: url.trim() });
+    // Kubo serves its read gateway on a different port, so the gateway URL has to survive a save/load round trip.
+    const gateway = typeof gatewayUrl === "string" && isHttpUrl(gatewayUrl.trim()) ? gatewayUrl.trim() : undefined;
+    out.push({ id, kind, url: url.trim(), ...(gateway ? { gatewayUrl: gateway } : {}) });
   }
   return out;
 }

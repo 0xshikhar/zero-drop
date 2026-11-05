@@ -7,11 +7,11 @@ export type Route =
   | { name: "settings" }
   | { name: "about" };
 
-/** Parses the hash (#/drop, #/d/<cid or digest>, #/groups, #/settings, #/about). Unknown routes fall back to /drop. */
+/** Parses the hash (#/drop, #/d/<cid or digest> (#/d/ alone opens the reader's lookup), #/groups, #/settings, #/about). Unknown routes fall back to /drop. */
 export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#/, "") || "/drop";
   const [head, ...rest] = path.split("/").filter(Boolean);
-  if (head === "d" && rest.length > 0) return { name: "reader", ref: decodeURIComponent(rest.join("/")) };
+  if (head === "d") return { name: "reader", ref: decodeURIComponent(rest.join("/")) };
   if (head === "groups") return { name: "groups" };
   if (head === "settings") return { name: "settings" };
   if (head === "about") return { name: "about" };

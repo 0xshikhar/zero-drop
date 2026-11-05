@@ -1,16 +1,37 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { network, statusLabels } from "@zerodrop/core";
-import { LOCAL } from "../lib/config";
+import type { ReactNode } from "react";
+import { setDeploymentInfo, statusLabels } from "@zerodrop/core";
+import { useDeployment, usePrefs, useSettings } from "../lib/prefs";
+import { useBootState, useNetworkPlan, useTraffic } from "../lib/network";
 import type { Route } from "../lib/router";
+import { frameAvailability } from "../lib/post";
+import { TorBoot } from "./TorBoot";
+
+export { Tick, MockMark } from "./common";
+export { short } from "../lib/util";
 
 export function Shell({ route, children }: { route: Route; children: ReactNode }) {
-  const labels = statusLabels();
+  const deployment = useDeployment();
+  const prefs = usePrefs();
+  const settings = useSettings();
+  const plan = useNetworkPlan();
+  const boot = useBootState();
+  // Keep the core labels in step with the deployment the user picked (idempotent).
+  if (deployment) setDeploymentInfo({ verifierKind: deployment.verifierKind, directRecordEnabled: deployment.directRecordEnabled });
+  // A chosen frame transport that cannot run is shown as direct would be a lie; show what will actually happen.
+  const frameOk = frameAvailability(deployment, settings).ok;
+  const transport = prefs.transport === "frame" && frameOk ? "frame" : "direct";
+  const labels = statusLabels({ transport });
+  void boot; // re-render on boot-state changes so the network label stays current
+
+  const anonTone = plan.effective === "direct" ? "badge-warning" : boot.status === "ready" ? "badge-neutral" : "badge-error";
+
   return (
     <div className="shell">
       <header className="topbar">
         <a className="wordmark" href="#/drop">ZeroDrop<span>/</span>disclosures</a>
         <nav className="nav" aria-label="Main">
           <NavLink href="#/drop" active={route.name === "drop"}>Post</NavLink>
+          <NavLink href="#/d/" active={route.name === "reader"}>Read</NavLink>
           <NavLink href="#/groups" active={route.name === "groups"}>Groups</NavLink>
           <NavLink href="#/settings" active={route.name === "settings"}>Settings</NavLink>
           <NavLink href="#/about" active={route.name === "about"}>About</NavLink>
@@ -18,11 +39,13 @@ export function Shell({ route, children }: { route: Route; children: ReactNode }
       </header>
 
       <div className="badges" aria-label="What this build does">
-        <span className="badge badge-neutral" title="Proof system in use">{labels.proof}</span>
+        <span className={`badge ${deployment?.verifierKind === "mock" ? "badge-warning" : "badge-neutral"}`} title="Proof system of the active deployment">{labels.proof}</span>
         <span className="badge badge-warning" title="How the posting transaction leaves the browser">{labels.transport}</span>
-        <span className="badge badge-warning" title="Network privacy">{labels.anonNetwork}</span>
-        <span className="badge badge-neutral mono">Chain {LOCAL.chainId} · local anvil</span>
+        <span className={`badge ${anonTone}`} title="Network privacy">{labels.anonNetwork}</span>
+        <span className="badge badge-neutral mono">{deployment ? `Chain ${deployment.chainId} · ${deployment.label}` : "No deployment"}</span>
       </div>
+
+      <TorBoot />
 
       <main>{children}</main>
 
@@ -38,24 +61,12 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
   return <a className={active ? "navlink active" : "navlink"} href={href} aria-current={active ? "page" : undefined}>{children}</a>;
 }
 
-/** Counts requests this session. Every request is direct: Anon-RPC is not integrated. */
+/** Counts requests this session: N/N anonymous. Direct requests are named, not hidden. */
 function TrafficMeter() {
-  const [summary, setSummary] = useState(network.summary());
-  useEffect(() => {
-    const timer = window.setInterval(() => setSummary(network.summary()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
+  const s = useTraffic();
   return (
-    <span className="meter mono" title="Requests leaving this browser in this session">
-      {summary.total} requests · {summary.direct} direct · {summary.anonymous} anonymous
+    <span className="meter mono" title="Requests leaving this browser in this session, and how many were handed to the anonymous route">
+      {s.anonymous}/{s.total} requests anonymous · {s.direct} direct
     </span>
   );
-}
-
-export function Tick({ children }: { children?: ReactNode }) {
-  return <span className="verified"><span aria-hidden="true">✓</span> {children ?? "Verified"}</span>;
-}
-
-export function short(hex: string, head = 10, tail = 6): string {
-  return hex.length > head + tail + 1 ? `${hex.slice(0, head)}…${hex.slice(-tail)}` : hex;
 }

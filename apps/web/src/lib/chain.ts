@@ -1,10 +1,9 @@
 import { createWalletClient, defineChain, http, type Account, type Address } from "viem";
-import { makePublicClient, network, rebuildFromEvents, type GroupSnapshot } from "@zerodrop/core";
-import { LOCAL } from "./config";
+import { makePublicClient, network, rebuildFromEvents, type GroupSnapshot, type NetworkClient } from "@zerodrop/core";
+import type { Deployment } from "./config";
+import { activeDeployment, currentSettings } from "./prefs";
+import { effectiveRpcUrls } from "./network";
 import { zeroDropAbi } from "./adapter";
-
-export const ZERODROP = LOCAL.contracts.zeroDrop;
-export const DEPLOYED_BLOCK = BigInt(LOCAL.deployedBlock);
 
 /**
  * The read client comes from @zerodrop/core, so its viem types are the core copy. Wallet calls below use
@@ -12,26 +11,49 @@ export const DEPLOYED_BLOCK = BigInt(LOCAL.deployedBlock);
  */
 export type PublicClient = ReturnType<typeof makePublicClient>[number];
 
-/** Anvil chain for the wallet client. Defined here so the wallet's viem types stay in one copy. */
-export const anvil = defineChain({
-  id: LOCAL.chainId,
-  name: "Anvil (local)",
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-  rpcUrls: { default: { http: [LOCAL.rpcUrl] } },
-});
-
-/** Read client for the configured RPC. Every request goes through the core network client (traffic meter). */
-export function readClient(): PublicClient {
-  return makePublicClient({ rpcUrls: [LOCAL.rpcUrl], chainId: LOCAL.chainId, role: "reader" })[0]!;
+/** The active deployment, or a clear error when config/ has nothing usable. */
+export function requireDeployment(): Deployment & { zeroDrop: Address } {
+  const d = activeDeployment();
+  if (!d || !d.zeroDrop) throw new Error("No usable deployment in config/. Run `pnpm contracts:deploy` first.");
+  return d as Deployment & { zeroDrop: Address };
 }
 
-/** Wallet client for posting. Requests are counted under the "source" role. */
-export function walletFor(account: Account) {
+/**
+ * Reads normally go through the network client (Anon-RPC when it is active). With "Direct RPC for readers" on,
+ * READER-role reads go straight out instead; they are still counted, as direct requests.
+ */
+const directForReaders: Pick<NetworkClient, "fetch"> = {
+  fetch: (input, init, role, session) => network.fetchDirect(input, init, role, session),
+};
+
+/** One read client per RPC URL (the user's list if set, else the deployment's). */
+export function readClients(role: "reader" | "source" | "issuer" = "reader"): PublicClient[] {
+  const d = requireDeployment();
+  const settings = currentSettings();
+  const urls = effectiveRpcUrls(settings, d);
+  const net = role === "reader" && settings.directRpcForReader ? (directForReaders as NetworkClient) : undefined;
+  return makePublicClient({ rpcUrls: urls, chainId: d.chainId, role, ...(net ? { net } : {}) });
+}
+
+export function readClient(role: "reader" | "source" | "issuer" = "reader"): PublicClient {
+  return readClients(role)[0]!;
+}
+
+/** Wallet client for posting or issuing. Requests are counted under the given role. */
+export function walletFor(account: Account, role: "source" | "issuer" = "source") {
+  const d = requireDeployment();
+  const url = effectiveRpcUrls(currentSettings(), d)[0]!;
+  const chain = defineChain({
+    id: d.chainId,
+    name: d.label,
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: { default: { http: [url] } },
+  });
   return createWalletClient({
     account,
-    chain: anvil,
-    transport: http(LOCAL.rpcUrl, {
-      fetchFn: (input, init) => network.fetch(input, init, "source", "post"),
+    chain,
+    transport: http(url, {
+      fetchFn: (input, init) => network.fetch(input, init, role, "post"),
     }),
   });
 }
@@ -61,7 +83,8 @@ type MembersLog = { args: { groupId: bigint; startIndex: number; root: bigint; c
  * rebuilt root differs from the last published root, is returned with an error and rootMatches false.
  */
 export async function loadGroups(client: PublicClient): Promise<GroupView[]> {
-  const common = { address: ZERODROP, abi: zeroDropAbi, fromBlock: DEPLOYED_BLOCK, toBlock: "latest" } as const;
+  const d = requireDeployment();
+  const common = { address: d.zeroDrop, abi: zeroDropAbi, fromBlock: BigInt(d.deployedBlock), toBlock: "latest" } as const;
   const [created, added] = await Promise.all([
     client.getContractEvents({ ...common, eventName: "GroupCreated" }),
     client.getContractEvents({ ...common, eventName: "MembersAdded" }),

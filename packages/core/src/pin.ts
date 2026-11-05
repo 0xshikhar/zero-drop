@@ -137,7 +137,7 @@ async function uploadKubo(
 ): Promise<void> {
   const query = "cid-version=1&raw-leaves=true&pin=true&chunker=size-1048576&hash=sha2-256";
   const form = new FormData();
-  form.append("file", new Blob([bytes], { type: "application/octet-stream" }), "document");
+  form.append("file", new Blob([bytes as BlobPart], { type: "application/octet-stream" }), "document");
   const response = await (opts.client ?? network).fetch(
     `${trimUrl(endpoint.url)}/api/v0/add?${query}`,
     { method: "POST", body: form, signal: opts.signal },
@@ -167,7 +167,7 @@ async function uploadZerodrop(
 ): Promise<void> {
   const response = await (opts.client ?? network).fetch(
     `${trimUrl(endpoint.url)}/pin/${cid}`,
-    { method: "PUT", body: bytes, headers: { "content-type": "application/octet-stream" }, signal: opts.signal },
+    { method: "PUT", body: bytes as BodyInit, headers: { "content-type": "application/octet-stream" }, signal: opts.signal },
     role,
     opts.session,
   );
