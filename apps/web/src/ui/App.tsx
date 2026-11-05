@@ -1,13 +1,40 @@
-import { useRoute } from "../lib/router";
+import { useEffect } from "react";
+import { useRoute, type Route } from "../lib/router";
 import { Shell } from "./Shell";
+import { LandingPage } from "./LandingPage";
 import { DropPage } from "./DropPage";
 import { ReaderPage } from "./ReaderPage";
 import { GroupsPage } from "./GroupsPage";
 import { SettingsPage } from "./SettingsPage";
 import { AboutPage } from "./AboutPage";
 
+const DEFAULT_DESCRIPTION = "Publish documents without publishing who you are.";
+
+/** Document title and meta description per route. Set on every route change. */
+const ROUTE_META: Record<Route["name"], { title: string; description: string }> = {
+  home: {
+    title: "ZeroDrop: leak the document, not yourself",
+    description: "Publish a document that anyone can check came from a group member, without revealing which member. Prototype.",
+  },
+  drop: { title: "Post a document · ZeroDrop", description: DEFAULT_DESCRIPTION },
+  reader: { title: "Read a disclosure · ZeroDrop", description: DEFAULT_DESCRIPTION },
+  groups: { title: "Groups · ZeroDrop", description: DEFAULT_DESCRIPTION },
+  settings: { title: "Settings · ZeroDrop", description: DEFAULT_DESCRIPTION },
+  about: { title: "About · ZeroDrop", description: DEFAULT_DESCRIPTION },
+};
+
 export function App() {
   const route = useRoute();
+
+  useEffect(() => {
+    const meta = ROUTE_META[route.name];
+    document.title = meta.title;
+    document.querySelector('meta[name="description"]')?.setAttribute("content", meta.description);
+  }, [route.name]);
+
+  // The landing page has its own header and footer; the app Shell is for the app routes only.
+  if (route.name === "home") return <LandingPage />;
+
   let page;
   switch (route.name) {
     case "drop":

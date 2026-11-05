@@ -1,0 +1,359 @@
+/*
+ * Landing page (route #/home). Tokens come from tokens.css (docs/design.md). Everything is scoped under .lp so the
+ * app's global rules (main, footer, a:hover, p margins) are overridden in one place.
+ * Spacing follows the 8px grid: 16 / 24 / 32 / 48 / 64 / 96. Section rhythm 64px on phones, 96px from 960px.
+ */
+
+.lp {
+  --font-hero: clamp(2.5rem, 5vw + 1rem, 3.8125rem);
+  --lp-line: rgba(236, 230, 216, 0.24);
+  --lp-line-on-green: rgba(236, 230, 216, 0.3);
+  --lp-gutter: 16px;
+  min-height: 100vh;
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+}
+@media (min-width: 768px) { .lp { --lp-gutter: 32px; } }
+
+.lp p { margin: 0; }
+.lp h1, .lp h2, .lp h3 { margin: 0; }
+.lp ul, .lp ol { margin: 0; padding: 0; list-style: none; }
+.lp li { margin: 0; }
+
+/* Keyboard focus: a visible ivory ring that also reads on the green band. */
+.lp :focus-visible { outline: 2px solid var(--text-primary); outline-offset: 3px; border-radius: 2px; }
+
+.lp-skip {
+  position: absolute;
+  left: var(--lp-gutter);
+  top: -64px;
+  z-index: 10;
+  padding: 12px 16px;
+  border-radius: var(--radius-card);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.lp-skip:focus-visible { top: 8px; }
+
+.lp-wrap {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 var(--lp-gutter);
+}
+
+.lp-main { display: block; max-width: none; margin: 0; padding: 0; }
+.lp-main:focus { outline: none; }
+
+/* Type. Instrument Serif only on the H1 (design.md section 3). Inter everywhere else. */
+.lp-h1 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-hero);
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+  max-width: 14ch;
+}
+.lp-h2 {
+  font-size: 25px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.011em;
+  color: var(--text-primary);
+  max-width: 28ch;
+}
+@media (min-width: 768px) { .lp-h2 { font-size: 31px; } }
+.lp-h3 {
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--text-primary);
+}
+.lp-lede { font-size: 20px; line-height: 1.5; color: var(--text-secondary); max-width: 36ch; }
+.lp-section-lede { margin-top: 16px; font-size: 16px; line-height: 1.6; color: var(--text-secondary); max-width: 65ch; }
+.lp-fine { margin-top: 24px; font-size: 14px; line-height: 1.55; color: var(--text-secondary); max-width: 52ch; }
+
+/* Hairline flourish: the single brass note in the hero (design.md section 2.3). */
+.lp-flourish { display: block; width: 48px; height: 1px; margin: 24px 0 24px; background: var(--accent-brass); }
+
+/* Links and buttons. Brass is for text links only. */
+.lp .lp-link { color: var(--accent-brass); text-decoration: underline; text-underline-offset: 3px; }
+.lp a.lp-link:hover { color: var(--accent-brass-bright); }
+.lp .lp-pending { color: var(--text-muted); font-size: 14px; }
+
+.lp-actions { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 32px; }
+.lp .lp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 0 24px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-card);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+}
+/* Ivory: the hero's single primary action. Green primary everywhere else. */
+.lp a.lp-btn-ivory { background: var(--ivory-fill); color: var(--accent-deep); }
+.lp a.lp-btn-ivory:hover { background: var(--ivory-fill-hover); color: var(--accent-deep); }
+.lp a.lp-btn-primary { background: var(--accent-primary); color: var(--text-primary); }
+.lp a.lp-btn-primary:hover { background: var(--accent-hover); color: var(--text-primary); }
+.lp a.lp-btn-ghost { background: transparent; color: var(--text-primary); border-color: var(--lp-line-on-green); }
+.lp a.lp-btn-ghost:hover { background: var(--bg-overlay); border-color: var(--border-focus); color: var(--text-primary); }
+.lp a.lp-btn-secondary { background: transparent; color: var(--text-primary); border-color: var(--lp-line); }
+.lp a.lp-btn-secondary:hover { background: var(--bg-overlay); border-color: var(--border-focus); color: var(--text-primary); }
+
+/* Header and navigation. Phones: a menu button opens the panel. From 960px: a single row. */
+.lp-header { position: relative; z-index: 5; background: var(--bg-canvas); }
+.lp-header-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 16px; min-height: 72px; }
+.lp .lp-wordmark {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-right: auto;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.lp .lp-menu-button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--lp-line);
+  border-radius: var(--radius-card);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 15px;
+  cursor: pointer;
+}
+.lp .lp-menu-button:hover { background: var(--bg-overlay); }
+/* Phones: the panel overlays the page below the header, so opening it does not move the content. */
+.lp .lp-nav {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-canvas);
+  border-bottom: 1px solid var(--border-hairline);
+  box-shadow: 0 16px 32px -12px rgba(0, 0, 0, 0.7);
+}
+.lp .lp-nav.is-open { display: block; }
+.lp .lp-nav-panel { display: flex; flex-direction: column; max-width: 1120px; margin: 0 auto; padding: 8px var(--lp-gutter) 16px; }
+.lp .lp-nav-links { display: flex; flex-direction: column; }
+.lp .lp-nav-links li { border-bottom: 1px solid var(--border-hairline); }
+.lp .lp-nav-links a {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  color: var(--text-secondary);
+  font-size: 16px;
+  text-decoration: none;
+}
+.lp .lp-nav-links a:hover { color: var(--text-primary); }
+.lp .lp-nav-actions { display: flex; flex-direction: column; gap: 12px; padding-top: 16px; }
+.lp .lp-nav-actions .lp-btn { width: 100%; }
+
+@media (min-width: 960px) {
+  .lp .lp-menu-button { display: none; }
+  .lp .lp-nav { display: flex; position: static; margin-left: auto; background: none; border-bottom: 0; box-shadow: none; }
+  .lp .lp-nav-panel { flex-direction: row; align-items: center; gap: 32px; max-width: none; margin: 0; padding: 0; }
+  .lp .lp-nav-links { flex-direction: row; gap: 24px; }
+  .lp .lp-nav-links li { border-bottom: 0; }
+  .lp .lp-nav-links a { min-height: 44px; font-size: 15px; }
+  .lp .lp-nav-actions { flex-direction: row; padding-top: 0; gap: 12px; }
+  .lp .lp-nav-actions .lp-btn { width: auto; min-height: 44px; padding: 0 18px; font-size: 15px; }
+}
+
+/* Hero band: the one large green area on the page. */
+.lp-hero { background: var(--accent-deep); padding: 64px 0; }
+@media (min-width: 960px) { .lp-hero { padding: 96px 0; } }
+.lp-hero-grid { display: grid; gap: 48px; align-items: center; }
+@media (min-width: 960px) {
+  .lp-hero-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: 64px; }
+}
+
+/* Reader card (illustration). The single raised element on the page. */
+.lp-verify {
+  margin: 0;
+  padding: 24px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-raised);
+  background: var(--bg-surface);
+  box-shadow: inset 0 1px 0 0 rgba(236, 230, 216, 0.06), 0 12px 32px -4px rgba(0, 0, 0, 0.65);
+}
+.lp-verify-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px 16px;
+  padding-bottom: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.lp-verify-tag { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
+.lp-check {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  border-top: 1px solid var(--border-hairline);
+}
+.lp-check > div { min-width: 0; }
+.lp-check strong { display: block; font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.lp-check-sub { display: block; font-size: 14px; line-height: 1.45; color: var(--text-secondary); overflow-wrap: anywhere; }
+.lp-check-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--verified);
+  border-radius: 50%;
+  color: var(--verified-bright);
+  font-size: 14px;
+  line-height: 1;
+}
+.lp-check-state { font-size: 14px; font-weight: 550; white-space: nowrap; }
+.lp-check-mock .lp-check-mark { border-color: var(--warning); background: var(--warning-tint); color: var(--warning-bright); }
+.lp-check-mock .lp-check-state { color: var(--warning-bright); }
+.lp-verify-foot { margin-top: 8px; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+
+/* Problem: heading on the left, prose on the right from 960px. */
+.lp-section { padding: 64px 0; border-top: 1px solid var(--border-hairline); scroll-margin-top: 16px; }
+@media (min-width: 960px) { .lp-section { padding: 96px 0; } }
+.lp-split { display: grid; gap: 24px; }
+@media (min-width: 960px) {
+  .lp-split { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 64px; align-items: start; }
+}
+.lp-prose { display: grid; gap: 16px; }
+.lp-prose p { font-size: 16px; line-height: 1.6; color: var(--text-secondary); max-width: 65ch; }
+.lp-prose .lp-prose-lead { font-size: 20px; line-height: 1.5; color: var(--text-primary); }
+
+/* How it works: four numbered steps (a real sequence). */
+#how-it-works .lp-h2, #security .lp-h2, #status .lp-h2, #roadmap .lp-h2, #faq .lp-h2 { margin-bottom: 48px; }
+.lp-steps { display: grid; gap: 0; }
+@media (min-width: 640px) { .lp-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; } }
+@media (min-width: 960px) { .lp-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 32px; } }
+.lp-step { padding: 24px 0 32px; border-top: 1px solid var(--border-hairline); }
+.lp-step-n { display: block; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+.lp-step h3 { margin: 16px 0 12px; }
+.lp-step p { font-size: 16px; line-height: 1.6; color: var(--text-secondary); }
+
+/* Trust cards: flat hairline cards. */
+.lp-cards { display: grid; gap: 16px; }
+@media (min-width: 640px) { .lp-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.lp-card {
+  padding: 24px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.lp-card h3 { margin-bottom: 12px; }
+.lp-card p { font-size: 16px; line-height: 1.6; color: var(--text-secondary); }
+
+/* Status: two columns from 900px. */
+.lp-status { display: grid; gap: 40px; }
+@media (min-width: 900px) { .lp-status { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 64px; } }
+.lp-status-col h3 { padding-bottom: 16px; border-bottom: 1px solid var(--lp-line); }
+.lp-list li {
+  position: relative;
+  padding: 16px 0 16px 28px;
+  border-bottom: 1px solid var(--border-hairline);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.lp-list li strong { font-weight: 600; color: var(--text-primary); }
+.lp-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 23px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.lp-list-done li::before { background: var(--text-primary); }
+.lp-list-open li::before { border: 1px solid var(--text-secondary); box-sizing: border-box; }
+.lp-status-link { margin-top: 40px; }
+
+/* Roadmap: three horizons side by side from 900px. */
+.lp-horizons { display: grid; gap: 40px; }
+@media (min-width: 900px) { .lp-horizons { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; } }
+.lp-horizon { padding-top: 24px; border-top: 1px solid var(--lp-line); }
+.lp-horizon h3 { margin-bottom: 12px; }
+.lp-horizon p { font-size: 16px; line-height: 1.6; color: var(--text-secondary); max-width: 40ch; }
+
+/* FAQ: native disclosure widgets, keyboard accessible without script. */
+.lp-faq { max-width: 760px; border-top: 1px solid var(--border-hairline); }
+.lp-faq details { border-bottom: 1px solid var(--border-hairline); }
+.lp-faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 64px;
+  padding: 16px 0;
+  cursor: pointer;
+  list-style: none;
+  font-size: 18px;
+  font-weight: 550;
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+.lp-faq summary::-webkit-details-marker { display: none; }
+.lp-faq summary::after {
+  content: "+";
+  flex: none;
+  width: 24px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--text-secondary);
+}
+.lp-faq details[open] summary::after { content: "\2212"; }
+.lp-faq details p { max-width: 65ch; padding: 0 48px 24px 0; font-size: 16px; line-height: 1.6; color: var(--text-secondary); }
+.lp-faq details p .lp-link { white-space: nowrap; }
+
+/* Final call to action, on canvas (the green band is reserved for the hero). */
+.lp-cta { padding: 64px 0; border-top: 1px solid var(--border-hairline); }
+@media (min-width: 960px) { .lp-cta { padding: 96px 0; } }
+.lp-cta-grid { display: grid; gap: 24px; }
+@media (min-width: 960px) { .lp-cta-grid { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 64px; } }
+.lp-cta-text { margin-top: 16px; }
+.lp-actions-cta { margin-top: 0; align-items: center; }
+
+/* Footer. */
+.lp-footer { display: block; margin: 0; padding: 48px 0 40px; border-top: 1px solid var(--border-hairline); background: var(--bg-canvas); font-size: 14px; color: var(--text-secondary); }
+.lp-footer-grid { display: grid; gap: 32px; }
+@media (min-width: 960px) { .lp-footer-grid { grid-template-columns: minmax(0, 1fr) auto; align-items: start; } }
+.lp-footer-name { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--text-primary); }
+.lp-footer-note { margin-top: 8px; line-height: 1.55; color: var(--text-secondary); }
+.lp-footer-warn { color: var(--text-primary); }
+.lp-footer-nav ul { display: flex; flex-wrap: wrap; gap: 4px 24px; }
+.lp .lp-footer-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent-brass);
+  text-decoration: none;
+}
+.lp .lp-footer-nav a:hover { color: var(--accent-brass-bright); text-decoration: underline; text-underline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp, .lp * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+}
