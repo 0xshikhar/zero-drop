@@ -26,8 +26,8 @@ export const DEVNET_CHAIN_ID = 1337;
 export const RECORD_SIGNATURE = "record(uint256,bytes32,bytes32,uint256,uint256,uint256,bytes)";
 const RECORD_ABI = parseAbi([`function ${RECORD_SIGNATURE}`]);
 
-/** Mirror of DisclosureFrameChecks.MIN_BODY_GAS: the SENDER frame needs at least this execution gas. */
-export const MIN_SENDER_EXECUTION_GAS = 150_000n;
+/** Mirror of DisclosureFrameChecks.MIN_BODY_GAS (450k: a real depth-2 Semaphore `record` needs about 395k, and record re-verifies on the frame path). */
+export const MIN_SENDER_EXECUTION_GAS = 450_000n;
 /** Mirror of DisclosureFrameChecks.MAX_COST_CAP (0.01 ether in wei). */
 export const MAX_COST_CAP_WEI = 10n ** 16n;
 
@@ -49,12 +49,14 @@ export type DisclosureFrameTxArgs = {
   maxFeePerGas: bigint;
   /** Defaults to maxFeePerGas. */
   maxPriorityFeePerGas?: bigint;
-  /** Execution gas for the VERIFY frame. Defaults to 30 000. */
+  /** Execution gas for the VERIFY frame. Defaults to 450 000 (a verifier call plus the checks). */
   verifyExecutionGas?: bigint;
-  /** Execution gas for the SENDER frame. Defaults to 200 000, and must be >= 150 000. */
+  /** Execution gas for the SENDER frame. Defaults to 800 000, and must be >= MIN_SENDER_EXECUTION_GAS. */
   senderExecutionGas?: bigint;
   /** State gas for the SENDER frame. Defaults to 200 000. */
   senderStateGas?: bigint;
+  /** Also copy the proof into the ARBITRARY signature entry. The VERIFY fallback reads the proof from the SENDER frame calldata, so this only doubles the size. Default false. */
+  proofInSignature?: boolean;
 };
 
 export type DisclosureFrameTx = {
@@ -88,8 +90,8 @@ export function recordSelector(): Hex {
  */
 export function buildDisclosureFrames(args: DisclosureFrameTxArgs) {
   const profile = DISCLOSURE_PROFILE;
-  const verifyGas = args.verifyExecutionGas ?? 30_000n;
-  const senderGas = args.senderExecutionGas ?? 200_000n;
+  const verifyGas = args.verifyExecutionGas ?? 450_000n;
+  const senderGas = args.senderExecutionGas ?? 800_000n;
   const senderState = args.senderStateGas ?? 200_000n;
   const maxFee = args.maxFeePerGas;
 
@@ -131,7 +133,7 @@ export function buildDisclosureFrameTx(args: DisclosureFrameTxArgs): DisclosureF
     nonceKeys: [args.nullifier],
     nonceSeq: args.nonceSeq ?? 0n,
     frames,
-    signatures: [{ scheme: sigScheme(profile, "ARBITRARY"), signer: "0x", msg: "0x", signature: args.proof }],
+    signatures: [{ scheme: sigScheme(profile, "ARBITRARY"), signer: "0x", msg: "0x", signature: args.proofInSignature ? args.proof : "0x" }],
     fees: {
       maxFeePerGas: args.maxFeePerGas,
       maxPriorityFeePerGas: args.maxPriorityFeePerGas ?? args.maxFeePerGas,
@@ -190,11 +192,10 @@ export async function frameRpc<T = unknown>(options: FrameRpcOptions, method: st
 
 /**
  * Dry run through `ethrex_simulateFrameTransaction`.
- * NOT VERIFIED: the library does not document this method's parameter list. This passes the same single
- * wire object as eth_sendFrameTransaction. Check it against the devnet before relying on it.
+ * Parameters follow docs.altmempool.wtf: [rawTx (0x06||rlp hex), block?, {trace?}]. NOT VERIFIED against a live node.
  */
-export async function simulateDisclosureFrameTx(options: FrameRpcOptions & { tx: FrameTx }): Promise<unknown> {
-  return frameRpc(options, "ethrex_simulateFrameTransaction", [toWire(options.tx)]);
+export async function simulateDisclosureFrameTx(options: FrameRpcOptions & { tx: FrameTx; trace?: boolean }): Promise<unknown> {
+  return frameRpc(options, "ethrex_simulateFrameTransaction", [encodeTx(DISCLOSURE_PROFILE, options.tx), null, { trace: options.trace ?? false }]);
 }
 
 export type FrameSubmitResult = {
@@ -233,4 +234,53 @@ export async function submitDisclosureFrameTx(options: {
     }),
   );
   return { accepted: results.some((r) => r.ok), results };
+}
+
+export type FrameStatusResult = { url: string; ok: boolean; status?: unknown; error?: string };
+
+/**
+ * Polls `skandha_frameTransactionStatus` on every mempool endpoint (docs: statuses include pending,
+ * OnChain and Reverted). Returns one result per endpoint each call. NOT VERIFIED against a live node.
+ */
+export async function frameTransactionStatus(options: {
+  txHash: Hex;
+  mempoolUrls: readonly string[];
+  role?: RequestRole;
+  session?: string;
+  net?: NetworkClient;
+}): Promise<FrameStatusResult[]> {
+  return Promise.all(
+    options.mempoolUrls.map(async (url): Promise<FrameStatusResult> => {
+      try {
+        const status = await frameRpc({ url, role: options.role, session: options.session, net: options.net }, "skandha_frameTransactionStatus", [options.txHash]);
+        return { url, ok: true, status };
+      } catch (error) {
+        return { url, ok: false, error: error instanceof Error ? error.message : String(error) };
+      }
+    }),
+  );
+}
+
+/** Polls until a terminal status (a status string containing OnChain or Reverted) or the deadline passes. */
+export async function waitForFrameTransaction(options: {
+  txHash: Hex;
+  mempoolUrls: readonly string[];
+  intervalMs?: number;
+  timeoutMs?: number;
+  onUpdate?: (results: FrameStatusResult[]) => void;
+  signal?: AbortSignal;
+  net?: NetworkClient;
+  role?: RequestRole;
+  session?: string;
+}): Promise<{ terminal: boolean; results: FrameStatusResult[] }> {
+  const deadline = Date.now() + (options.timeoutMs ?? 120_000);
+  let results: FrameStatusResult[] = [];
+  while (Date.now() < deadline && !options.signal?.aborted) {
+    results = await frameTransactionStatus(options);
+    options.onUpdate?.(results);
+    const text = JSON.stringify(results.map((r) => r.status ?? null)).toLowerCase();
+    if (text.includes("onchain") || text.includes("reverted")) return { terminal: true, results };
+    await new Promise((r) => setTimeout(r, options.intervalMs ?? 2_000));
+  }
+  return { terminal: false, results };
 }

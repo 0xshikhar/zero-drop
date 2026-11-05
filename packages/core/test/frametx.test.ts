@@ -62,15 +62,16 @@ describe("disclosure frame transaction", () => {
     expect(decoded).toEqual([1n, CASE, CID, 42n, 7n, 20n, PROOF]);
   });
 
-  it("uses the nullifier as the nonce key and carries the proof in an ARBITRARY signature", () => {
-    const { tx } = buildDisclosureFrameTx(base);
+  it("uses the nullifier as the nonce key and carries the proof in an ARBITRARY signature only when asked", () => {
+    const { tx } = buildDisclosureFrameTx({ ...base, proofInSignature: true });
+    expect(buildDisclosureFrameTx(base).tx.signatures[0]!.signature).toBe("0x");
     expect(tx.nonceKeys).toEqual([7n]);
     expect(tx.signatures).toEqual([{ scheme: 0, signer: "0x", msg: "0x", signature: PROOF }]);
   });
 
   it("encodes as type 0x06 and round-trips through the library decoder", () => {
     const profile = DISCLOSURE_PROFILE;
-    const { tx, raw, sigHash, txHash } = buildDisclosureFrameTx(base);
+    const { tx, raw, sigHash, txHash } = buildDisclosureFrameTx({ ...base, proofInSignature: true });
     expect(raw.startsWith("0x06")).toBe(true);
     expect(sigHash).toMatch(/^0x[0-9a-f]{64}$/);
     expect(txHash).toMatch(/^0x[0-9a-f]{64}$/);
