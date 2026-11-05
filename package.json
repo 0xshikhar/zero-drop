@@ -1,0 +1,13 @@
+{
+  "name": "zerodrop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Anonymous, verifiable document disclosures",
+  "scripts": {
+    "build": "pnpm --filter @zerodrop/web build",
+    "dev": "pnpm --filter @zerodrop/web dev",
+    "test:contracts": "cd contracts && forge test",
+    "build:contracts": "cd contracts && forge build"
+  },
+  "packageManager": "pnpm@10.0.0"
+}

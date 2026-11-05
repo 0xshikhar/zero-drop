@@ -1,0 +1,9 @@
+{
+  "chainId": 1337,
+  "rpcUrls": [],
+  "sidecarUrls": [],
+  "contracts": {
+    "zeroDrop": null,
+    "verifier": null
+  }
+}
