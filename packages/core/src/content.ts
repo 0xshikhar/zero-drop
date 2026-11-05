@@ -1,7 +1,9 @@
 import { sha256 as viemSha256 } from "viem";
+import { PdfError, stripPdf } from "./pdf";
 
 export type ImageMediaType = "image/jpeg" | "image/png" | "image/webp";
 export type TextMediaType = "text/plain" | "text/markdown";
+export type PdfMediaType = "application/pdf";
 
 /** Metadata markers found by scanning the raw bytes of an image. */
 export type MetadataFindings = {
@@ -19,14 +21,25 @@ export type MetadataFindings = {
 export type PreparedDocument = {
   /** The bytes that will be hashed, stored and disclosed. */
   bytes: Uint8Array;
-  mediaType: ImageMediaType | TextMediaType;
+  mediaType: ImageMediaType | TextMediaType | PdfMediaType;
   /** Human-readable notes for the diff UI. Always describes what was actually done. */
   warnings: string[];
-  /** Set for images only. `found` is what the input contained; `residual` is what the output still contains. */
+  /**
+   * Set for images and PDFs. `found` is what the input contained; `residual` is what the output still contains.
+   * For PDFs this is the EXIF/XMP summary only (xmp = a document XMP stream; exif/gps = EXIF inside embedded
+   * JPEGs). Use `pdf` for the full per-field list.
+   */
   metadata?: {
     found: MetadataFindings;
     removed: Array<"exif" | "xmp">;
     residual: MetadataFindings;
+  };
+  /** Set for PDFs only: the human-readable removed and residual lists from stripPdf. */
+  pdf?: {
+    /** Fields that were present in the input and are gone from the re-parsed output, for example "Info.Author (Jane)". */
+    removed: string[];
+    /** What the output still contains: page content, fonts, images, and any metadata that survived. */
+    residual: string[];
   };
 };
 
@@ -49,15 +62,15 @@ const ENCODE_QUALITY = 0.92;
  * - text/plain and text/markdown: CRLF to LF and Unicode NFC normalization.
  * - image/jpeg, image/png, image/webp: decoded and re-encoded through a canvas in the browser, which
  *   drops EXIF, XMP and other ancillary metadata. Lossy formats are re-encoded at quality 0.92.
- * - PDF and everything else: rejected with UnsupportedMediaError. PDF metadata stripping is not implemented.
+ * - application/pdf: Info dictionary, XMP, PieceInfo, document ID, attachments and JavaScript are removed
+ *   structurally (no rasterising); see stripPdf. Encrypted, corrupt or non-PDF input is rejected with UnsupportedMediaError.
+ * - everything else: rejected with UnsupportedMediaError.
  */
 export async function prepareDocument(file: File): Promise<PreparedDocument> {
   const declared = (file.type || "").toLowerCase();
 
   if (declared === "application/pdf" || PDF_EXT.test(file.name)) {
-    throw new UnsupportedMediaError(
-      "PDF metadata stripping is not implemented yet, so PDF files cannot be prepared.",
-    );
+    return preparePdf(file);
   }
 
   const isTextByName = TEXT_EXT.test(file.name);
@@ -133,6 +146,35 @@ async function prepareImage(file: File): Promise<PreparedDocument> {
   };
 }
 
+async function preparePdf(file: File): Promise<PreparedDocument> {
+  const input = new Uint8Array(await file.arrayBuffer());
+  let result;
+  try {
+    result = await stripPdf(input);
+  } catch (error) {
+    if (error instanceof PdfError) throw new UnsupportedMediaError(error.message);
+    throw error;
+  }
+  const { before, after } = result;
+  const found: MetadataFindings = {
+    exif: before.jpegWithMetadata > 0,
+    xmp: before.fields.includes("XMP"),
+    gpsPossible: before.jpegWithMetadata > 0,
+  };
+  const residual: MetadataFindings = {
+    exif: after.jpegWithMetadata > 0,
+    xmp: after.fields.includes("XMP"),
+    gpsPossible: after.jpegWithMetadata > 0,
+  };
+  return {
+    bytes: result.bytes,
+    mediaType: "application/pdf",
+    warnings: result.warnings,
+    metadata: { found, removed: found.xmp && !residual.xmp ? ["xmp"] : [], residual },
+    pdf: { removed: result.removed, residual: result.residual },
+  };
+}
+
 function canReencodeImages(): boolean {
   return (
     typeof createImageBitmap === "function" &&
@@ -141,7 +183,7 @@ function canReencodeImages(): boolean {
 }
 
 async function reencodeImage(input: Uint8Array, mediaType: ImageMediaType): Promise<Uint8Array> {
-  const bitmap = await createImageBitmap(new Blob([input], { type: mediaType }), { imageOrientation: "from-image" });
+  const bitmap = await createImageBitmap(new Blob([input as BlobPart], { type: mediaType }), { imageOrientation: "from-image" });
   try {
     const { width, height } = bitmap;
     let blob: Blob | null;
@@ -215,7 +257,7 @@ function indexOfBytes(haystack: Uint8Array, needle: number[], start = 0, end = h
 
 /** SHA-256 of the bytes as a 0x-prefixed hex string. Async, WebCrypto based. */
 export async function sha256(bytes: Uint8Array): Promise<`0x${string}`> {
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const digest = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
   return `0x${Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("")}`;
 }
 

@@ -6,6 +6,9 @@ import {
   deserializeIdentity,
   exportIdentity,
   importIdentity,
+  IDENTITY_DB_NAME,
+  IDENTITY_PLAIN_KEY,
+  IDENTITY_STORE,
   loadIdentity,
   saveIdentity,
   serializeIdentity,
@@ -62,5 +65,11 @@ describe("identity", () => {
     expect(typeof indexedDB).toBe("undefined");
     expect(await saveIdentity(createIdentity())).toBe(false);
     expect(await loadIdentity()).toBeUndefined();
+  });
+
+  it("legacy plain saveIdentity/loadIdentity stay no-ops without IndexedDB, and the plain-record location is exported for the vault", async () => {
+    expect(await saveIdentity(createIdentity())).toBe(false);
+    expect(await loadIdentity()).toBeUndefined();
+    expect([IDENTITY_DB_NAME, IDENTITY_STORE, IDENTITY_PLAIN_KEY]).toEqual(["zerodrop", "identity", "current"]);
   });
 });

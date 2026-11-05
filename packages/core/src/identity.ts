@@ -65,7 +65,7 @@ export async function exportIdentity(
   const key = await deriveKey(passphrase, salt, iterations, ["encrypt"]);
   const plaintext = new TextEncoder().encode(serializeIdentity(identity));
   const ciphertext = new Uint8Array(
-    await subtle.encrypt({ name: "AES-GCM", iv, additionalData: AAD }, key, plaintext),
+    await subtle.encrypt({ name: "AES-GCM", iv: iv as BufferSource, additionalData: AAD }, key, plaintext as BufferSource),
   );
   const envelope: EncryptedIdentityEnvelope = {
     format: ENVELOPE_FORMAT,
@@ -92,20 +92,25 @@ export async function importIdentity(envelopeJson: string, passphrase: string): 
   const key = await deriveKey(passphrase, salt, envelope.kdf.iterations, ["decrypt"]);
   let plaintext: ArrayBuffer;
   try {
-    plaintext = await getSubtle().decrypt({ name: "AES-GCM", iv, additionalData: AAD }, key, ciphertext);
+    plaintext = await getSubtle().decrypt({ name: "AES-GCM", iv: iv as BufferSource, additionalData: AAD }, key, ciphertext as BufferSource);
   } catch {
     throw new Error("Wrong passphrase or corrupted identity file");
   }
   return deserializeIdentity(new TextDecoder().decode(plaintext));
 }
 
-const DB_NAME = "zerodrop";
-const STORE = "identity";
-const RECORD_KEY = "current";
+/** IndexedDB database, object store and key of the PLAIN (unencrypted) identity record. Shared with vault.ts. */
+export const IDENTITY_DB_NAME = "zerodrop";
+export const IDENTITY_STORE = "identity";
+export const IDENTITY_PLAIN_KEY = "current";
+const DB_NAME = IDENTITY_DB_NAME;
+const STORE = IDENTITY_STORE;
+const RECORD_KEY = IDENTITY_PLAIN_KEY;
 
 /**
- * Persists the identity in IndexedDB for this origin. The stored value is the raw private key,
- * unencrypted, so anyone with access to the browser profile can read it. Use exportIdentity for backups.
+ * PLAIN storage (legacy, kept for backward compatibility). Persists the identity in IndexedDB for this
+ * origin. The stored value is the raw private key, unencrypted, so anyone with access to the browser
+ * profile can read it. Prefer saveIdentityEncrypted in vault.ts; use exportIdentity for backups.
  * Returns false when IndexedDB is unavailable or the write fails.
  */
 export async function saveIdentity(identity: Identity): Promise<boolean> {
@@ -125,7 +130,10 @@ export async function saveIdentity(identity: Identity): Promise<boolean> {
   }
 }
 
-/** Loads the identity saved by saveIdentity. Returns undefined when nothing is stored or access fails. */
+/**
+ * Loads the PLAIN identity saved by saveIdentity (legacy). Returns undefined when nothing is stored or
+ * access fails. It does not read the encrypted record; use loadIdentityEncrypted in vault.ts for that.
+ */
 export async function loadIdentity(): Promise<Identity | undefined> {
   try {
     const db = await openDb();
@@ -173,7 +181,7 @@ async function deriveKey(passphrase: string, salt: Uint8Array, iterations: numbe
   const subtle = getSubtle();
   const material = await subtle.importKey("raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"]);
   return subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+    { name: "PBKDF2", salt: salt as BufferSource, iterations, hash: "SHA-256" },
     material,
     { name: "AES-GCM", length: 256 },
     false,

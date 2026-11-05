@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cidFor, checkContentHash, digestOf, prepareDocument, scanMetadata, sha256, UnsupportedMediaError } from "../src/content";
+import { PDFDocument, PDFName } from "pdf-lib";
+import { inspectPdfMetadata } from "../src/pdf";
 import { CID } from "multiformats/cid";
 import * as Digest from "multiformats/hashes/digest";
 import { sha256 as mfSha256 } from "multiformats/hashes/sha2";
@@ -44,13 +46,51 @@ describe("content", () => {
     expect(out.metadata).toBeUndefined();
   });
 
-  it("PDF and unknown types are rejected", async () => {
-    await expect(prepareDocument(new File(["%PDF-1.4"], "a.pdf", { type: "application/pdf" }))).rejects.toBeInstanceOf(
-      UnsupportedMediaError,
-    );
+  it("unknown types are rejected", async () => {
     await expect(prepareDocument(new File(["x"], "a.bin", { type: "application/x-foo" }))).rejects.toThrow(
       /Unsupported file type/,
     );
+  });
+
+  it("PDFs are stripped through prepareDocument with the metadata shape and removed/residual lists", async () => {
+    const doc = await PDFDocument.create();
+    doc.setAuthor("Jane Whistleblower");
+    doc.setProducer("Acme PDF Writer");
+    doc.setTitle("Memo");
+    doc.addPage().drawText("body text", { x: 10, y: 10 });
+    const xmp = doc.context.stream("<x:xmpmeta>Jane</x:xmpmeta>", { Type: "Metadata", Subtype: "XML" });
+    doc.catalog.set(PDFName.of("Metadata"), doc.context.register(xmp));
+    const bytes = await doc.save();
+
+    for (const file of [
+      new File([bytes as BlobPart], "memo.pdf", { type: "application/pdf" }),
+      new File([bytes as BlobPart], "memo.pdf", { type: "" }),
+    ]) {
+      const out = await prepareDocument(file);
+      expect(out.mediaType).toBe("application/pdf");
+      expect(out.metadata?.found.xmp).toBe(true);
+      expect(out.metadata?.removed).toEqual(["xmp"]);
+      expect(out.metadata?.residual).toEqual({ exif: false, xmp: false, gpsPossible: false });
+      expect(out.pdf?.removed.join("|")).toMatch(/Info\.Author \(Jane Whistleblower\)/);
+      expect(out.pdf?.residual.join(" ")).toMatch(/Page text/);
+      expect(out.warnings.join(" ")).toMatch(/printer tracking dots/);
+      expect(Buffer.from(out.bytes).toString("latin1")).not.toContain("Jane");
+      expect((await inspectPdfMetadata(out.bytes)).fields).toEqual([]);
+    }
+  });
+
+  it("encrypted, corrupt and mislabelled PDFs are rejected with UnsupportedMediaError", async () => {
+    await expect(prepareDocument(new File(["%PDF-1.4 garbage"], "a.pdf", { type: "application/pdf" }))).rejects.toBeInstanceOf(
+      UnsupportedMediaError,
+    );
+    await expect(prepareDocument(new File(["not a pdf at all"], "a.pdf", { type: "application/pdf" }))).rejects.toThrow(/PDF header/);
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    const text = Buffer.from(await doc.save({ useObjectStreams: false })).toString("latin1").replace(
+      /trailer\s*<</,
+      "trailer\n<< /Encrypt << /Filter /Standard /V 1 /R 2 /O (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa) /U (bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb) /P -4 >>",
+    );
+    await expect(prepareDocument(new File([Buffer.from(text, "latin1")], "enc.pdf", { type: "application/pdf" }))).rejects.toThrow(/encrypted/);
   });
 
   it("images are refused with a clear error when no canvas exists (node)", async () => {
