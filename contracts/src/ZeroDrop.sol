@@ -2,6 +2,9 @@
 pragma solidity ^0.8.28;
 
 import {IDisclosureVerifier} from "./IDisclosureVerifier.sol";
+import {IStakingRegistry} from "./IStakingRegistry.sol";
+import {DisclosureFrameChecks} from "./frame/DisclosureFrameChecks.sol";
+import {HegotaSupport, Devnet, Scope, TxParam, FrameParam, FrameMode} from "./vendor/hegota/HegotaSupport.sol";
 
 /// @title ZeroDrop
 /// @notice Anonymous, verifiable disclosures. Members of a group prove, with a Semaphore v4
@@ -12,9 +15,48 @@ import {IDisclosureVerifier} from "./IDisclosureVerifier.sol";
 ///      rebuild the tree from the `MembersAdded` events and check the root against the event.
 ///      The contract only checks that a root was published by the group issuer and that
 ///      a proof verifies against a published root with at least `minSize` members.
-///      The contract does not implement the EIP-8141 VERIFY fallback. Frame-shape checks
-///      live in `frame/DisclosureFrameChecks.sol`.
-contract ZeroDrop {
+///
+///      Two ways to record:
+///      - Frame path (EIP-8141, self relay). ZeroDrop is `tx.sender` and payer. The VERIFY frame lands in
+///        `fallback()` (msg.sender == 0xaa), which checks the transaction shape, reads the `record` arguments out of
+///        frame 1 and verifies the proof, then `approve(EXECUTION_AND_PAYMENT)`. The SENDER frame then calls
+///        `record` with msg.sender == address(this).
+///      - Direct path (dev only). Anyone calls `record` in an ordinary transaction. Controlled by the immutable
+///        `directRecordEnabled`; the anonymous deployment sets it to false.
+///
+///      NOT EXERCISED ON A REAL FRAME-CAPABLE NODE. Forge cannot run the frame opcodes (TXPARAM, FRAMEDATALOAD,
+///      FRAMEDATACOPY, FRAMEPARAM, APPROVE), so the tests drive `fallback()` against mock helpers that are etched
+///      over the real helper addresses. They prove the wiring and the order of the checks. They do not prove:
+///        1. that the opcode helpers behave on the devnet as the hegota-support package documents (only APPROVE and
+///           SIGPARAM are verified there for the ERC8421_WORKSHOP devnet; TXPARAM, FRAMEDATALOAD, FRAMEDATACOPY and
+///           FRAMEPARAM are "from the EIP text");
+///        2. the numeric ids/semantics this file relies on: TxParam.MAX_COST (0x06, undocumented in the EIP, ethrex
+///           answers it with the transaction's maximum cost), TxParam.NONCE_KEY_0 (0x10), FrameParam.RESOLVED_TARGET
+///           for a frame whose target is null, FrameParam.MODE value for SENDER, and FRAMEDATALOAD/FRAMEDATACOPY
+///           offsets being relative to the frame's data (the calldata of the SENDER frame, selector at offset 0);
+///        3. that the devnet mempool admits the VERIFY frame: the external STATICCALL to the verifier, the SLOADs of
+///           `groups`, `knownRoot`, `rootSize`, `records` and `nullifierUsed`, and the CREATE'd helper contracts
+///           being callable from VERIFY under the associated-storage and opcode rules; and the gas the VERIFY
+///           frame needs with a real Groth16 proof;
+///        4. that `approve` (delegatecall into the APPROVE helper) ends the frame with the right scope;
+///        5. that the VERIFY frame is delivered with empty calldata and msg.sender == 0xaa, which is what routes it
+///           into the payable `fallback()` here (the contract has no `receive()`, by design).
+///      Run scripts/gas-spike.ts on the devnet before relying on any of this.
+contract ZeroDrop is HegotaSupport(Devnet.ERC8421_WORKSHOP) {
+    /// @notice Caller of a VERIFY frame in EIP-8141: the protocol's entry point address, 0x...aa.
+    address public constant FRAME_ENTRY_POINT = address(0xaa);
+
+    /// @dev Layout of the SENDER frame's calldata, `record(...)` ABI-encoded: 4 byte selector, then seven head
+    ///      words (groupId, caseId, cidDigest, root, nullifier, depth, offset of `proof`), then the tail
+    ///      (length word, proof bytes). `proof` is the last argument, so its offset is 7 * 32 = 0xe0 in canonical
+    ///      encoding (what viem and Solidity produce).
+    uint256 internal constant ARGS_BASE = 4;
+    uint256 internal constant PROOF_HEAD_OFFSET = 0xe0;
+    /// @dev Upper bound on proof bytes copied out of the frame (Semaphore Groth16 is 256).
+    uint256 internal constant MAX_PROOF_BYTES = 1024;
+    /// @dev Index of the SENDER body frame.
+    uint256 internal constant BODY_FRAME = 1;
+
     /// @dev BN254 scalar field modulus. Commitments, roots, messages and scopes are reduced to it.
     uint256 public constant SNARK_SCALAR_FIELD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
@@ -34,6 +76,16 @@ contract ZeroDrop {
     error VerifierIsLocked();
     error InvalidVerifier();
     error InvalidProof();
+    error DirectRecordDisabled();
+    error NotFrameEntry();
+    error NotSelfRelay();
+    error FrameModeMismatch(uint256 actual);
+    error NonceKeyMismatch(uint256 nonceKey, uint256 nullifier);
+    error MalformedRecordData(string reason);
+    error StakingRegistryNotSet();
+    error InsufficientBalance(uint256 balance, uint256 needed);
+    error StakeCallFailed();
+    error EtherRejected();
 
     struct Group {
         address issuer;
@@ -64,6 +116,10 @@ contract ZeroDrop {
     IDisclosureVerifier public verifier;
     bool public verifierLocked;
     address public immutable owner;
+    /// @notice When false, `record` can only be reached through the frame path (msg.sender == address(this)).
+    bool public immutable directRecordEnabled;
+    /// @notice Devnet staking registry that `stake` forwards to. Zero means staking is not configured.
+    IStakingRegistry public immutable stakingRegistry;
 
     event GroupCreated(uint256 indexed groupId, address indexed issuer, uint32 minSize);
     event MembersAdded(uint256 indexed groupId, uint32 startIndex, uint256 root, uint256[] commitments);
@@ -78,9 +134,17 @@ contract ZeroDrop {
     );
     event VerifierChanged(address indexed verifier);
     event VerifierLocked();
+    event Staked(uint256 amount, uint32 unstakeDelaySec);
+    event StakeUnlocked();
+    event StakeWithdrawn(address indexed to);
 
-    constructor() {
+    /// @param directRecordEnabled_ True for local development: anyone may call `record` directly. False for the
+    ///        anonymous deployment, where only the frame path (self call from the SENDER frame) may record.
+    /// @param stakingRegistry_ Address of the devnet `IStakingRegistry`, or zero when not staking.
+    constructor(bool directRecordEnabled_, address stakingRegistry_) {
         owner = msg.sender;
+        directRecordEnabled = directRecordEnabled_;
+        stakingRegistry = IStakingRegistry(stakingRegistry_);
     }
 
     /// @notice Create a group. The caller becomes its issuer.
@@ -134,6 +198,10 @@ contract ZeroDrop {
     }
 
     /// @notice Record a document digest with a Semaphore membership proof.
+    /// @dev Callable by `address(this)` (the SENDER frame of a disclosure transaction), or by anyone while
+    ///      `directRecordEnabled`. The proof is verified again here even on the frame path: the VERIFY frame
+    ///      already did, but `record` keeps its own invariants whoever calls it. That costs the SENDER frame a
+    ///      second verification, which is why `DisclosureFrameChecks.MIN_BODY_GAS` covers a full `record()`.
     /// @param depth Semaphore Merkle tree depth the proof was generated with.
     /// @param proof ABI-encoded `uint256[8]` Groth16 points, as read by the verifier adapter.
     function record(
@@ -145,21 +213,10 @@ contract ZeroDrop {
         uint256 depth,
         bytes calldata proof
     ) external {
-        if (groups[groupId].issuer == address(0)) revert InvalidGroup();
-        if (!knownRoot[groupId][root]) revert UnknownRoot();
-        if (rootSize[groupId][root] < groups[groupId].minSize) revert InsufficientGroupSize();
-        if (cidDigest == bytes32(0)) revert InvalidCid();
-        if (records[cidDigest].exists) revert AlreadyRecorded();
-        if (nullifier == 0) revert InvalidNullifier();
+        if (msg.sender != address(this) && !directRecordEnabled) revert DirectRecordDisabled();
 
-        uint256 scope = scopeOf(caseId);
-        if (nullifierUsed[scope][nullifier]) revert NullifierAlreadyUsed();
-
-        IDisclosureVerifier v = verifier;
-        if (address(v) == address(0)) revert VerifierNotSet();
-        if (!v.verify(root, nullifier, messageOf(cidDigest, groupId, caseId), scope, depth, proof)) {
-            revert InvalidProof();
-        }
+        uint256 scope = _checkRecord(groupId, caseId, cidDigest, root, nullifier);
+        _verifyProof(groupId, caseId, cidDigest, root, nullifier, depth, scope, proof);
 
         nullifierUsed[scope][nullifier] = true;
         records[cidDigest] = Record({
@@ -171,6 +228,141 @@ contract ZeroDrop {
             exists: true
         });
         emit Disclosed(cidDigest, groupId, caseId, root, nullifier, depth, proof);
+    }
+
+    /// @dev State checks shared by `record` and the VERIFY frame. Returns the case scope.
+    function _checkRecord(uint256 groupId, bytes32 caseId, bytes32 cidDigest, uint256 root, uint256 nullifier)
+        internal
+        view
+        returns (uint256 scope)
+    {
+        if (groups[groupId].issuer == address(0)) revert InvalidGroup();
+        if (!knownRoot[groupId][root]) revert UnknownRoot();
+        if (rootSize[groupId][root] < groups[groupId].minSize) revert InsufficientGroupSize();
+        if (cidDigest == bytes32(0)) revert InvalidCid();
+        if (records[cidDigest].exists) revert AlreadyRecorded();
+        if (nullifier == 0) revert InvalidNullifier();
+
+        scope = scopeOf(caseId);
+        if (nullifierUsed[scope][nullifier]) revert NullifierAlreadyUsed();
+    }
+
+    function _verifyProof(
+        uint256 groupId,
+        bytes32 caseId,
+        bytes32 cidDigest,
+        uint256 root,
+        uint256 nullifier,
+        uint256 depth,
+        uint256 scope,
+        bytes memory proof
+    ) internal view {
+        IDisclosureVerifier v = verifier;
+        if (address(v) == address(0)) revert VerifierNotSet();
+        if (!v.verify(root, nullifier, messageOf(cidDigest, groupId, caseId), scope, depth, proof)) {
+            revert InvalidProof();
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // EIP-8141 VERIFY frame
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// @notice VERIFY frame entry (msg.sender == 0x...aa), which is also how plain ether transfers arrive.
+    /// @dev Why no `receive()`: a contract that declares `receive()` sends every empty-calldata call there, and the
+    ///      VERIFY frame has empty calldata, so it would never reach the verification code. This single payable
+    ///      fallback splits the two by caller. From 0xaa it verifies (and refuses value). From anyone else, empty
+    ///      calldata is accepted as a float top-up (like `receive()`) and any other unknown call reverts with
+    ///      `NotFrameEntry`, so the contract keeps rejecting unknown selectors as before.
+    /// @dev Checks, in order (docs/architecture.md section 4). Any failure reverts and the transaction is invalid.
+    ///      1. FRAME_COUNT == 2; frame 1 is a SENDER frame to `address(this)`, value 0, selector `record`.
+    ///      2. Frame 1 execution gas limit >= MIN_BODY_GAS.
+    ///      3. MAX_COST <= MAX_COST_CAP.
+    ///      4. `record` arguments read from frame 1's data: root is known, group has >= minSize members, the
+    ///         digest is unused, nullifier != 0 and unused, and the keyed nonce NONCE_KEY_0 equals the nullifier
+    ///         (the protocol then enforces one transaction per nullifier).
+    ///      5. The verifier accepts the proof for (root, nullifier, messageOf(cid, group, case), scopeOf(case), depth).
+    ///      6. approve(EXECUTION_AND_PAYMENT): the contract pays and executes.
+    ///      The proof comes from frame 1's calldata (it is the last `record` argument), not from SIGDATACOPY. The
+    ///      ARBITRARY signature entry that scripts and frametx.ts also fill with the proof is not read. The message
+    ///      is `messageOf(...)`, not SIG_HASH, so the proof is bound to the document, group and case but a mempool
+    ///      observer can replay the same proof with different fees. The keyed nonce makes a replay unusable once
+    ///      the first transaction lands.
+    ///      NOT EXERCISED ON A REAL NODE, see the contract header.
+    fallback() external payable {
+        if (msg.sender == FRAME_ENTRY_POINT) {
+            if (msg.value != 0) revert EtherRejected();
+            _verifyDisclosure();
+            return;
+        }
+        // Not the protocol caller: behave like a plain `receive()` (empty calldata tops up the float) and reject
+        // everything else, as a contract without a fallback would.
+        if (msg.data.length != 0) revert NotFrameEntry();
+    }
+
+    function _verifyDisclosure() internal {
+        uint256 frameCount = txparam(TxParam.FRAME_COUNT);
+        if (frameCount != DisclosureFrameChecks.FRAME_COUNT) {
+            revert DisclosureFrameChecks.FrameCountMismatch(frameCount);
+        }
+        uint256 mode = frameparam(BODY_FRAME, FrameParam.MODE);
+        if (mode != uint256(FrameMode.SENDER)) revert FrameModeMismatch(mode);
+
+        RecordArgs memory a = _readRecordArgs();
+
+        DisclosureFrameChecks.check(
+            DisclosureFrameChecks.Shape({
+                frameCount: frameCount,
+                senderTarget: address(uint160(frameparam(BODY_FRAME, FrameParam.RESOLVED_TARGET))),
+                senderValue: frameparam(BODY_FRAME, FrameParam.VALUE),
+                selector: bytes4(framedataload(0, BODY_FRAME)),
+                senderExecutionGas: frameparam(BODY_FRAME, FrameParam.EXECUTION_GAS_LIMIT),
+                maxCost: txparam(TxParam.MAX_COST),
+                rootKnown: knownRoot[a.groupId][a.root],
+                nullifier: txparam(TxParam.NONCE_KEY_0),
+                expectedTarget: address(this)
+            })
+        );
+
+        uint256 nonceKey = txparam(TxParam.NONCE_KEY_0);
+        if (nonceKey != a.nullifier) revert NonceKeyMismatch(nonceKey, a.nullifier);
+
+        uint256 scope = _checkRecord(a.groupId, a.caseId, a.cidDigest, a.root, a.nullifier);
+        _verifyProof(a.groupId, a.caseId, a.cidDigest, a.root, a.nullifier, a.depth, scope, a.proof);
+
+        approve(Scope.EXECUTION_AND_PAYMENT);
+    }
+
+    struct RecordArgs {
+        uint256 groupId;
+        bytes32 caseId;
+        bytes32 cidDigest;
+        uint256 root;
+        uint256 nullifier;
+        uint256 depth;
+        bytes proof;
+    }
+
+    /// @dev Decodes frame 1's calldata with FRAMEDATALOAD/FRAMEDATACOPY. Requires the canonical ABI layout
+    ///      (proof offset 0xe0, proof last, data long enough), which is what `encodeFunctionData` produces.
+    function _readRecordArgs() internal view returns (RecordArgs memory a) {
+        a.groupId = uint256(framedataload(ARGS_BASE, BODY_FRAME));
+        a.caseId = framedataload(ARGS_BASE + 32, BODY_FRAME);
+        a.cidDigest = framedataload(ARGS_BASE + 64, BODY_FRAME);
+        a.root = uint256(framedataload(ARGS_BASE + 96, BODY_FRAME));
+        a.nullifier = uint256(framedataload(ARGS_BASE + 128, BODY_FRAME));
+        a.depth = uint256(framedataload(ARGS_BASE + 160, BODY_FRAME));
+
+        if (uint256(framedataload(ARGS_BASE + 192, BODY_FRAME)) != PROOF_HEAD_OFFSET) {
+            revert MalformedRecordData("proof offset");
+        }
+        uint256 proofLength = uint256(framedataload(ARGS_BASE + PROOF_HEAD_OFFSET, BODY_FRAME));
+        if (proofLength == 0 || proofLength > MAX_PROOF_BYTES) revert MalformedRecordData("proof length");
+        uint256 proofStart = ARGS_BASE + PROOF_HEAD_OFFSET + 32;
+        if (frameparam(BODY_FRAME, FrameParam.DATA_LENGTH) < proofStart + proofLength) {
+            revert MalformedRecordData("data too short");
+        }
+        a.proof = framedatacopy(proofStart, proofLength, BODY_FRAME);
     }
 
     /// @notice Set the proof verifier. Owner only, and only until the verifier is locked.
@@ -190,7 +382,54 @@ contract ZeroDrop {
         emit VerifierLocked();
     }
 
-    receive() external payable {}
+    // ---------------------------------------------------------------------------------------------------------
+    // Staking (devnet registry). The registry keys stake by msg.sender, so the contract has to call it itself.
+    // ---------------------------------------------------------------------------------------------------------
 
-    function donate() external payable {}
+    /// @notice Stake `amount` of the contract's own balance (float plus anything sent with this call) at the devnet
+    ///         staking registry, so the VERIFY frame may use the staked-entity budget (>100k gas).
+    /// @dev Owner only, normal transaction. Interface: `IStakingRegistry.addStake(uint32)` from
+    ///      docs.altmempool.wtf (see IStakingRegistry.sol). The devnet wants stake strictly above 0.01 ETH and
+    ///      `unstakeDelaySec >= 86400`. Not tested against the real registry, only against a mock.
+    function stake(uint32 unstakeDelaySec, uint256 amount) external payable {
+        _onlyOwner();
+        IStakingRegistry registry = _registry();
+        if (address(this).balance < amount) revert InsufficientBalance(address(this).balance, amount);
+        registry.addStake{value: amount}(unstakeDelaySec);
+        emit Staked(amount, unstakeDelaySec);
+    }
+
+    /// @notice Start the stake withdrawal delay. The contract stops counting as staked immediately.
+    function unlockStake() external {
+        _onlyOwner();
+        _registry().unlockStake();
+        emit StakeUnlocked();
+    }
+
+    /// @notice Withdraw the stake to `to` once the registry's delay has passed. Owner only.
+    function withdrawStake(address payable to) external {
+        _onlyOwner();
+        _registry().withdrawStake(to);
+        emit StakeWithdrawn(to);
+    }
+
+    function _onlyOwner() private view {
+        if (msg.sender != owner) revert NotOwner();
+    }
+
+    function _registry() private view returns (IStakingRegistry registry) {
+        registry = stakingRegistry;
+        if (address(registry) == address(0)) revert StakingRegistryNotSet();
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // Float
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// @notice Top up the gas float the contract pays disclosures from. Plain transfers (empty calldata) work
+    ///         too, through `fallback()`. The protocol caller 0xaa is refused so a VERIFY frame can not be
+    ///         steered into the ether path.
+    function donate() external payable {
+        if (msg.sender == FRAME_ENTRY_POINT) revert EtherRejected();
+    }
 }

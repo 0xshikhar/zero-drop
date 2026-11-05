@@ -1,0 +1,5 @@
+Copied unmodified from @forshtat/hegota-support 0.0.1 (contracts/*.sol, contracts/internal, contracts/generated),
+license: MIT (see LICENSE in this directory). The package is private and not on npm, so the Solidity files are
+vendored here instead of imported from node_modules. The relative imports inside the package are kept as they are.
+The generated HelperCode.sol holds the creation code of the Yul helpers that wrap the frame opcodes.
+To update: re-copy the files from node_modules/@forshtat/hegota-support/contracts and re-run `forge test`.

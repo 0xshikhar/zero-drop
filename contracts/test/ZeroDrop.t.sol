@@ -55,7 +55,7 @@ contract ZeroDropTest is Test {
     uint256 internal constant FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     function setUp() public {
-        zd = new ZeroDrop();
+        zd = new ZeroDrop(true, address(0));
         mock = new MockVerifier(0);
     }
 

@@ -3,10 +3,13 @@
  * transaction. Writes the identities to .local/demo-members.json (gitignored: it holds secrets
  * for local demo use only). Run after `pnpm contracts:deploy`:
  *   pnpm tsx scripts/seed-group.ts [count=4] [minSize=3]
- * Env: RPC_URL, DEPLOYER_PRIVATE_KEY (defaults: local anvil account 0).
+ *   CONFIG=config/local-mock.json pnpm tsx scripts/seed-group.ts 4 3
+ * Env: CONFIG (config file, default config/local.json), RPC_URL, DEPLOYER_PRIVATE_KEY (defaults: local anvil
+ * account 0). Members are written to .local/demo-members.<config name>.json (config/local.json also keeps
+ * writing .local/demo-members.json for older callers).
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createPublicClient, createWalletClient, http, parseEventLogs, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -19,7 +22,9 @@ import {
 } from "../packages/core/src/index.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const config = JSON.parse(readFileSync(resolve(root, "config/local.json"), "utf8")) as {
+const configPath = resolve(root, process.env.CONFIG ?? "config/local.json");
+const configName = basename(configPath, ".json");
+const config = JSON.parse(readFileSync(configPath, "utf8")) as {
   rpcUrl: string;
   contracts: { zeroDrop: Hex };
 };
@@ -63,16 +68,14 @@ async function main(): Promise<void> {
 
   const dir = resolve(root, ".local");
   mkdirSync(dir, { recursive: true });
-  const out = resolve(dir, "demo-members.json");
-  writeFileSync(
-    out,
-    JSON.stringify(
-      { groupId: groupId.toString(), minSize, root: newRoot.toString(), members: identities.map(serializeIdentity) },
-      null,
-      2,
-    ),
-    { mode: 0o600 },
+  const payload = JSON.stringify(
+    { groupId: groupId.toString(), minSize, root: newRoot.toString(), members: identities.map(serializeIdentity) },
+    null,
+    2,
   );
+  const out = resolve(dir, `demo-members.${configName}.json`);
+  writeFileSync(out, payload, { mode: 0o600 });
+  if (configName === "local") writeFileSync(resolve(dir, "demo-members.json"), payload, { mode: 0o600 });
   console.log(`group ${groupId} created with ${size} members, root ${newRoot}`);
   console.log(`identities written to ${out} (local demo secrets, do not commit)`);
 }

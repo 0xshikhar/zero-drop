@@ -1,10 +1,14 @@
 {
   "chainId": 31337,
   "rpcUrl": "http://127.0.0.1:8545",
+  "verifierKind": "semaphore",
+  "directRecordEnabled": true,
+  "verifierLocked": true,
+  "stakingRegistry": null,
   "contracts": {
-    "zeroDrop": "0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0",
-    "verifierAdapter": "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
-    "semaphoreVerifier": "0x5fbdb2315678afecb367f032d93f642f64180aa3"
+    "zeroDrop": "0xa85233c63b9ee964add6f2cffe00fd84eb32338f",
+    "verifierAdapter": "0x7a2088a1bfc9d81c55368ae168c2c02570cb814f",
+    "semaphoreVerifier": "0x4a679253410272dd5232b3ff7cf5dbb88f295319"
   },
-  "deployedBlock": 3
+  "deployedBlock": 25
 }

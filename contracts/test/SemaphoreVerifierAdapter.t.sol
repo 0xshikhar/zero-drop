@@ -43,7 +43,7 @@ contract SemaphoreVerifierAdapterTest is Test {
 
         semaphore = new SemaphoreVerifier();
         adapter = new SemaphoreVerifierAdapter(address(semaphore));
-        zd = new ZeroDrop();
+        zd = new ZeroDrop(true, address(0));
     }
 
     /// @dev Creates the fixture group on a fresh ZeroDrop and publishes the fixture root.

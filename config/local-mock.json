@@ -1,0 +1,14 @@
+{
+  "chainId": 31337,
+  "rpcUrl": "http://127.0.0.1:8545",
+  "verifierKind": "mock",
+  "directRecordEnabled": true,
+  "verifierLocked": false,
+  "stakingRegistry": null,
+  "mockGasToBurn": "300000",
+  "contracts": {
+    "zeroDrop": "0x67d269191c92caf3cd7723f116c85e6e9bf55933",
+    "mockVerifier": "0xe6e340d132b5f46d1e472debcd681b2abc16e57e"
+  },
+  "deployedBlock": 30
+}

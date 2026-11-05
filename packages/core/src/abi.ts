@@ -3,12 +3,36 @@
 export const zeroDropAbi = [
   {
     "type": "constructor",
-    "inputs": [],
+    "inputs": [
+      {
+        "name": "directRecordEnabled_",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "stakingRegistry_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
     "stateMutability": "nonpayable"
   },
   {
-    "type": "receive",
+    "type": "fallback",
     "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "FRAME_ENTRY_POINT",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -64,6 +88,19 @@ export const zeroDropAbi = [
       }
     ],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "directRecordEnabled",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -361,6 +398,44 @@ export const zeroDropAbi = [
   },
   {
     "type": "function",
+    "name": "stake",
+    "inputs": [
+      {
+        "name": "unstakeDelaySec",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "stakingRegistry",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IStakingRegistry"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "unlockStake",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "verifier",
     "inputs": [],
     "outputs": [
@@ -384,6 +459,19 @@ export const zeroDropAbi = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "withdrawStake",
+    "inputs": [
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address payable"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "event",
@@ -492,6 +580,44 @@ export const zeroDropAbi = [
   },
   {
     "type": "event",
+    "name": "StakeUnlocked",
+    "inputs": [],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "StakeWithdrawn",
+    "inputs": [
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Staked",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "unstakeDelaySec",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "VerifierChanged",
     "inputs": [
       {
@@ -513,6 +639,113 @@ export const zeroDropAbi = [
     "type": "error",
     "name": "AlreadyRecorded",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BodyGasTooLow",
+    "inputs": [
+      {
+        "name": "actual",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "minimum",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "DirectRecordDisabled",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "EtherRejected",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FrameCountMismatch",
+    "inputs": [
+      {
+        "name": "actual",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "FrameModeMismatch",
+    "inputs": [
+      {
+        "name": "actual",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "FrameTargetMismatch",
+    "inputs": [
+      {
+        "name": "actual",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "expected",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "FrameValueNonZero",
+    "inputs": [
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "HelperDeploymentFailed",
+    "inputs": [
+      {
+        "name": "devnet",
+        "type": "uint8",
+        "internalType": "enum Devnet"
+      },
+      {
+        "name": "opcode",
+        "type": "uint8",
+        "internalType": "enum Opcode"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InsufficientBalance",
+    "inputs": [
+      {
+        "name": "balance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "needed",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -556,7 +789,55 @@ export const zeroDropAbi = [
   },
   {
     "type": "error",
+    "name": "MalformedRecordData",
+    "inputs": [
+      {
+        "name": "reason",
+        "type": "string",
+        "internalType": "string"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "MaxCostTooHigh",
+    "inputs": [
+      {
+        "name": "actual",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cap",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "NoCommitments",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NonceKeyMismatch",
+    "inputs": [
+      {
+        "name": "nonceKey",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "nullifier",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotFrameEntry",
     "inputs": []
   },
   {
@@ -566,8 +847,76 @@ export const zeroDropAbi = [
   },
   {
     "type": "error",
+    "name": "NotSelfRelay",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NullifierAlreadyUsed",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NullifierZero",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OpcodeUnsupported",
+    "inputs": [
+      {
+        "name": "devnet",
+        "type": "uint8",
+        "internalType": "enum Devnet"
+      },
+      {
+        "name": "opcode",
+        "type": "uint8",
+        "internalType": "enum Opcode"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "RootUnknown",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SelectorMismatch",
+    "inputs": [
+      {
+        "name": "actual",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      },
+      {
+        "name": "expected",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "StakeCallFailed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "StakingRegistryNotSet",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnexpectedOutputLength",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
