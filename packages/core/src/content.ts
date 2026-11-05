@@ -1,5 +1,3 @@
-import { CID } from "multiformats/cid";
-import * as Digest from "multiformats/hashes/digest";
 import { sha256 as viemSha256 } from "viem";
 
 export type ImageMediaType = "image/jpeg" | "image/png" | "image/webp";
@@ -228,8 +226,32 @@ export function digestOf(bytes: Uint8Array): `0x${string}` {
 
 /** CIDv1 (raw codec, sha2-256, base32) for the bytes. Synchronous. */
 export function cidFor(bytes: Uint8Array): string {
-  const digest = Digest.create(SHA2_256_CODE, hexToBytes(digestOf(bytes)));
-  return CID.create(1, RAW_CODEC, digest).toString();
+  // CIDv1 binary form: version 0x01, raw codec, multihash (sha2-256, 32 bytes). Encoded as
+  // multibase base32 (prefix "b", RFC 4648 lowercase, no padding). Written by hand because the
+  // multiformats package entry points do not resolve under Node ESM.
+  const multihash = hexToBytes(digestOf(bytes));
+  const binary = new Uint8Array(4 + multihash.length);
+  binary.set([0x01, RAW_CODEC, SHA2_256_CODE, multihash.length], 0);
+  binary.set(multihash, 4);
+  return `b${base32Lower(binary)}`;
+}
+
+const BASE32_ALPHABET = "abcdefghijklmnopqrstuvwxyz234567";
+
+function base32Lower(bytes: Uint8Array): string {
+  let out = "";
+  let buffer = 0;
+  let bits = 0;
+  for (const byte of bytes) {
+    buffer = (buffer << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      out += BASE32_ALPHABET[(buffer >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) out += BASE32_ALPHABET[(buffer << (5 - bits)) & 31];
+  return out;
 }
 
 /** True when the bytes hash to expectedDigest (0x-prefixed 32-byte hex, case-insensitive). */
