@@ -9,5 +9,14 @@
     "test:contracts": "cd contracts && forge test",
     "build:contracts": "cd contracts && forge build"
   },
-  "packageManager": "pnpm@10.0.0"
+  "packageManager": "pnpm@10.0.0",
+  "devDependencies": {
+    "@semaphore-protocol/group": "4.14.5",
+    "@semaphore-protocol/identity": "4.14.5",
+    "@semaphore-protocol/proof": "4.14.5",
+    "tsx": "4",
+    "typescript": "5.7.2",
+    "viem": "2.57.16",
+    "vitest": "3"
+  }
 }
