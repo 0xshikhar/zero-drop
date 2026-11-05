@@ -19,7 +19,7 @@ import { messageOf, scopeOf } from "./prove";
 import type { VerifyDisclosureInput } from "./verify-proof";
 
 export const BUNDLE_VERSION = 1 as const;
-export const BUNDLE_MEDIA_TYPES = ["text/plain", "text/markdown", "image/jpeg", "image/png", "image/webp"] as const;
+export const BUNDLE_MEDIA_TYPES = ["text/plain", "text/markdown", "image/jpeg", "image/png", "image/webp", "application/pdf"] as const;
 export type BundleMediaType = (typeof BUNDLE_MEDIA_TYPES)[number];
 
 export type ProofBundle = {

@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   describeTradeoff,
   exportIdentity,
-  importIdentity,
   MAX_DELAY_MINUTES_LIMIT,
   MIN_PASSPHRASE_LENGTH,
   resetSettings,
@@ -16,17 +15,12 @@ import { planNetwork } from "../lib/network";
 import { effectivePinners, urlProblem } from "../lib/pinners";
 import { frameAvailability } from "../lib/post";
 import { resetPrefs, updatePrefs, useDeployment, usePrefs, useSettings } from "../lib/prefs";
-import { persistIdentity, type Identity } from "../lib/session";
+import { useSession } from "../lib/session";
 import { download, errorMessage, short } from "../lib/util";
 import { Card, Info, Warn } from "./common";
-import { DevDemoButton } from "./DevDemo";
+import { IdentityPanel, PassphraseForm } from "./IdentityPanel";
 
-type Props = {
-  identity: Identity | undefined;
-  setIdentity: (identity: Identity) => void;
-};
-
-export function SettingsPage({ identity, setIdentity }: Props) {
+export function SettingsPage() {
   const settings = useSettings();
   const prefs = usePrefs();
   const deployment = useDeployment();
@@ -116,12 +110,11 @@ export function SettingsPage({ identity, setIdentity }: Props) {
         <PinnerList settings={settings} />
       </Card>
 
-      <Card title="Identity backup" subtitle={`The export is encrypted with your passphrase (PBKDF2 and AES-GCM). It is the only copy outside this browser. Passphrase minimum: ${MIN_PASSPHRASE_LENGTH} characters.`} raised={false}>
-        <IdentityBackup identity={identity} setIdentity={setIdentity} />
-        {import.meta.env.DEV && <DevDemoButton setIdentity={setIdentity} />}
+      <Card title="Identity" subtitle={`The identity is stored in this browser encrypted with your passphrase (PBKDF2 and AES-GCM, minimum ${MIN_PASSPHRASE_LENGTH} characters). There is no recovery if you forget it, so keep an encrypted backup.`} raised={false}>
+        <IdentitySettings />
       </Card>
 
-      <Card title="Reset" subtitle="Back to the defaults: settings, deployment choice and transaction type. Your identity is not touched." raised={false}>
+      <Card title="Reset" subtitle="Back to the defaults: settings, deployment choice and transaction type. Your stored identity is not touched." raised={false}>
         <button className="secondary" onClick={() => { resetSettings(); resetPrefs(); }}>Reset to defaults</button>
       </Card>
     </section>
@@ -227,50 +220,112 @@ function PinnerList({ settings }: { settings: Settings }) {
   );
 }
 
-function IdentityBackup({ identity, setIdentity }: Props) {
-  const [passphrase, setPassphrase] = useState("");
+function IdentitySettings() {
+  const session = useSession();
+  const { actions } = session;
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string }>();
-  const [importFile, setImportFile] = useState<File>();
-
-  async function exportBackup() {
-    if (!identity) return setMessage({ tone: "error", text: "No identity to export yet." });
-    try {
-      download("zerodrop-identity.json", await exportIdentity(identity, passphrase), "application/json");
-      setMessage({ tone: "ok", text: "Encrypted backup downloaded. Keep the passphrase somewhere else." });
-    } catch (error) {
-      setMessage({ tone: "error", text: errorMessage(error) });
-    }
-  }
-
-  async function importBackup() {
-    if (!importFile) return setMessage({ tone: "error", text: "Choose a backup file first." });
-    try {
-      const imported = await importIdentity(await importFile.text(), passphrase);
-      setIdentity(imported);
-      const saved = await persistIdentity(imported);
-      setMessage({ tone: "ok", text: saved ? "Identity imported and saved in this browser." : "Identity imported for this session. This browser would not save it." });
-    } catch (error) {
-      setMessage({ tone: "error", text: errorMessage(error) });
-    }
-  }
 
   return (
     <>
-      <label className="field">
-        <span className="field-label">Passphrase</span>
-        <input type="password" autoComplete="new-password" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} />
-      </label>
-      <div className="actions tight">
-        <button className="secondary" onClick={() => void exportBackup()} disabled={!identity}>Export encrypted backup</button>
-      </div>
-      <label className="field">
-        <span className="field-label">Import a backup file</span>
-        <input type="file" accept="application/json" onChange={(e) => setImportFile(e.target.files?.[0])} />
-      </label>
-      <div className="actions tight">
-        <button className="secondary" onClick={() => void importBackup()}>Import backup</button>
-      </div>
-      {message && <p className={message.tone === "ok" ? "verified small" : "error-text small"}>{message.text}</p>}
+      <IdentityPanel
+        unlocked={() => (
+          <div className="actions tight">
+            <button className="secondary" onClick={() => { void actions.lock().then(() => setMessage({ tone: "ok", text: "Locked. The identity was dropped from memory; the encrypted copy is still stored." })); }} data-testid="lock">Lock</button>
+          </div>
+        )}
+      />
+      {message && <p className={message.tone === "ok" ? "verified small" : "error-text small"} role="status" data-testid="identity-message">{message.text}</p>}
+      <ExportIdentity setMessage={setMessage} />
+      <ImportIdentity setMessage={setMessage} />
+      <DeleteIdentity setMessage={setMessage} />
     </>
+  );
+}
+
+type Say = (m: { tone: "ok" | "error"; text: string } | undefined) => void;
+
+function ExportIdentity({ setMessage }: { setMessage: Say }) {
+  const { identity } = useSession();
+  return (
+    <div className="list-editor">
+      <p className="field-label">Export (encrypted file)</p>
+      {!identity ? (
+        <p className="small muted">Unlock the identity above to export it.</p>
+      ) : (
+        <>
+          <p className="small muted">The file is encrypted with the passphrase you type here. It can be the same as your vault passphrase or a different one. It is the only copy outside this browser.</p>
+          <PassphraseForm
+            id="export"
+            confirm
+            submitLabel="Export encrypted backup"
+            onSubmit={async (p) => {
+              download("zerodrop-identity.json", await exportIdentity(identity, p), "application/json");
+              setMessage({ tone: "ok", text: "Encrypted backup downloaded. Keep the passphrase somewhere else." });
+            }}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function ImportIdentity({ setMessage }: { setMessage: Say }) {
+  const { stored } = useSession();
+  const { actions } = useSession();
+  const [file, setFile] = useState<File>();
+  return (
+    <div className="list-editor">
+      <p className="field-label">Import (encrypted file)</p>
+      <p className="small muted">Decrypts a backup with its passphrase, then stores it in this browser encrypted under that same passphrase.{stored !== "none" ? " This replaces the identity stored here now." : ""}</p>
+      <label className="field">
+        <span className="field-label">Backup file</span>
+        <input type="file" accept="application/json,.json" onChange={(e) => setFile(e.target.files?.[0])} data-testid="import-file" />
+      </label>
+      {file && (
+        <PassphraseForm
+          id="import"
+          submitLabel={stored !== "none" ? "Import and replace" : "Import"}
+          busyLabel="Decrypting…"
+          onSubmit={async (p) => {
+            await actions.importBackup(await file.text(), p);
+            setMessage({ tone: "ok", text: "Identity imported and stored encrypted in this browser. It is unlocked for this session." });
+            setFile(undefined);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function DeleteIdentity({ setMessage }: { setMessage: Say }) {
+  const { stored, identity, actions } = useSession();
+  const [confirming, setConfirming] = useState(false);
+  if (stored === "none" && !identity) return null;
+  return (
+    <div className="list-editor">
+      <p className="field-label">Delete stored identity</p>
+      {!confirming ? (
+        <button className="secondary" onClick={() => setConfirming(true)} data-testid="delete-start">Delete stored identity…</button>
+      ) : (
+        <>
+          <Warn>This permanently removes the identity from this browser. Without an exported backup you can no longer post as this group member, and the issuer has to add a new commitment. This cannot be undone.</Warn>
+          <div className="actions tight">
+            <button className="secondary" onClick={() => setConfirming(false)}>Keep it</button>
+            <button
+              className="primary"
+              data-testid="delete-confirm"
+              onClick={() => {
+                void actions.deleteStored().then(() => {
+                  setConfirming(false);
+                  setMessage({ tone: "ok", text: "Stored identity deleted from this browser." });
+                });
+              }}
+            >
+              Delete permanently
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   );
 }

@@ -1,0 +1,3 @@
+# Written by scripts/stack.ts (pnpm stack:up) and other local setups; never commit.
+.env.local
+.env.*.local

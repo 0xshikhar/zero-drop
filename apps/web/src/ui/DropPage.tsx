@@ -3,9 +3,10 @@ import {
   cidFor,
   commitmentHex,
   createBundle,
-  createIdentity,
   digestOf,
+  PDF_PIN_LIMIT_BYTES,
   prepareDocument,
+  sha256,
   publishDocument,
   serializeBundle,
   UnsupportedMediaError,
@@ -18,24 +19,20 @@ import { networkGate, useBootState, useNetworkPlan } from "../lib/network";
 import { describeEndpoint, effectivePinners } from "../lib/pinners";
 import { frameAvailability, initialSteps, proofBlocker, runPost, PostCancelled, type TimelineStep } from "../lib/post";
 import { updatePrefs, useDeployment, usePrefs, useSettings } from "../lib/prefs";
-import { persistIdentity, type Identity } from "../lib/session";
-import { download, errorMessage, formatBytes, mediaTypeOf, shareLink, short } from "../lib/util";
+import { useSession } from "../lib/session";
+import { download, errorMessage, formatBytes, bundleMediaType, shareLink, short } from "../lib/util";
 import { Card, CopyButton, Tick, Warn } from "./common";
+import { IdentityPanel } from "./IdentityPanel";
 import { DevDemoButton } from "./DevDemo";
 import { TxTimeline } from "./TxTimeline";
-
-type Props = {
-  identity: Identity | undefined;
-  setIdentity: (identity: Identity) => void;
-  identityChecked: boolean;
-};
 
 const STEPS = ["Identity", "Group and case", "File", "Metadata", "Anonymity set", "Publish", "Post", "Timeline"] as const;
 const PRIVATE_KEY = /^0x[0-9a-fA-F]{64}$/;
 
 type Done = { txHash: Hex; blockNumber: bigint; digest: Hex; cid: string; bundleJson: string; mock: boolean; transport: "direct" | "frame" };
 
-export function DropPage({ identity, setIdentity, identityChecked }: Props) {
+export function DropPage() {
+  const { identity } = useSession();
   const deployment = useDeployment();
   const settings = useSettings();
   const prefs = usePrefs();
@@ -44,7 +41,6 @@ export function DropPage({ identity, setIdentity, identityChecked }: Props) {
   const gate = networkGate(plan, boot);
 
   const [step, setStep] = useState(0);
-  const [saved, setSaved] = useState<boolean | undefined>();
 
   // Group and case
   const [groups, setGroups] = useState<GroupView[]>();
@@ -58,6 +54,7 @@ export function DropPage({ identity, setIdentity, identityChecked }: Props) {
   const [fileError, setFileError] = useState<string>();
   const [working, setWorking] = useState(false);
   const [reviewed, setReviewed] = useState(false);
+  const [originalHash, setOriginalHash] = useState<string>();
 
   // Publish (pinners)
   const [pinning, setPinning] = useState(false);
@@ -78,6 +75,7 @@ export function DropPage({ identity, setIdentity, identityChecked }: Props) {
   const isMember = !!(identity && view && view.commitments.some((c) => c === identity.commitment));
   const digest = prepared ? digestOf(prepared.bytes) : undefined;
   const cid = prepared ? cidFor(prepared.bytes) : undefined;
+  const overLimit = !!prepared && prepared.bytes.byteLength > PDF_PIN_LIMIT_BYTES;
 
   const pinners = effectivePinners(settings, deployment);
   const minPins = pinners.endpoints.length >= 2 ? 2 : 1;
@@ -105,12 +103,6 @@ export function DropPage({ identity, setIdentity, identityChecked }: Props) {
     }
   }
 
-  async function createNewIdentity() {
-    const next = createIdentity();
-    setIdentity(next);
-    setSaved(await persistIdentity(next));
-  }
-
   async function inspect(next?: File) {
     setFile(next);
     setPrepared(undefined);
@@ -118,10 +110,13 @@ export function DropPage({ identity, setIdentity, identityChecked }: Props) {
     setPinError(undefined);
     setFileError(undefined);
     setReviewed(false);
+    setOriginalHash(undefined);
     if (!next) return;
     setWorking(true);
     try {
-      setPrepared(await prepareDocument(next));
+      const [before, result] = await Promise.all([next.arrayBuffer().then((b) => sha256(new Uint8Array(b))), prepareDocument(next)]);
+      setOriginalHash(before);
+      setPrepared(result);
     } catch (error) {
       setFileError(
         error instanceof UnsupportedMediaError
@@ -191,7 +186,7 @@ export function DropPage({ identity, setIdentity, identityChecked }: Props) {
         proofBytes: outcome.proof.proofBytes,
         proofMode: d.verifierKind,
         cid,
-        mediaType: mediaTypeOf(prepared.bytes),
+        mediaType: bundleMediaType(prepared.mediaType, prepared.bytes),
         bytes: prepared.bytes,
       });
       setDone({ txHash: outcome.txHash, blockNumber: outcome.blockNumber, digest, cid, bundleJson: serializeBundle(bundle), mock: d.verifierKind === "mock", transport: outcome.transport });
@@ -237,36 +232,22 @@ export function DropPage({ identity, setIdentity, identityChecked }: Props) {
           {identity && <SummaryRow label="Identity" value={`commitment ${short(commitmentHex(identity), 12, 8)}`} onEdit={() => setStep(0)} />}
           {step > 1 && view && <SummaryRow label="Group and case" value={`Group ${view.groupId} · case "${caseLabel.trim()}"`} onEdit={() => setStep(1)} />}
           {step > 2 && file && <SummaryRow label="File" value={`${file.name} · ${formatBytes(prepared?.bytes.byteLength ?? 0)}`} onEdit={() => setStep(2)} />}
-          {step > 3 && <SummaryRow label="Metadata" value={prepared?.metadata?.removed.length ? `Removed ${prepared.metadata.removed.join(", ").toUpperCase()}` : "Reviewed"} onEdit={() => setStep(3)} />}
+          {step > 3 && <SummaryRow label="Metadata" value={prepared?.pdf?.removed.length ? `Removed ${prepared.pdf.removed.length} PDF field${prepared.pdf.removed.length === 1 ? "" : "s"}` : prepared?.metadata?.removed.length ? `Removed ${prepared.metadata.removed.join(", ").toUpperCase()}` : "Reviewed"} onEdit={() => setStep(3)} />}
           {step > 4 && <SummaryRow label="Anonymity set" value={`1 of ${sizeNow} members`} onEdit={() => setStep(4)} />}
           {step > 5 && pinResult && <SummaryRow label="Published" value={`${pinResult.pinned} pin${pinResult.pinned === 1 ? "" : "s"}`} onEdit={() => setStep(5)} />}
         </div>
       )}
 
       {step === 0 && (
-        <Card title="Your identity" subtitle="A Semaphore identity, created in this browser. Its commitment is the public value the issuer adds to a group.">
-          {!identityChecked && <p className="muted">Checking for a saved identity…</p>}
-          {identityChecked && !identity && (
-            <>
-              <p>No identity yet.</p>
-              <div className="actions tight">
-                <button className="primary" onClick={() => void createNewIdentity()}>Create identity</button>
-                {import.meta.env.DEV && <DevDemoButton setIdentity={setIdentity} />}
-              </div>
-            </>
-          )}
-          {identity && (
-            <>
-              <p className="field-label">Commitment (give this to the issuer)</p>
-              <code className="digest" data-testid="commitment">{commitmentHex(identity)}</code>
-              {saved === false && <Warn>This browser refused to save the identity. Export a backup from Settings before you leave the page.</Warn>}
-              {saved !== false && <p className="muted small">Saved in this browser's IndexedDB as an unencrypted key. Anyone with access to this browser profile can read it. Export an encrypted backup from Settings.</p>}
+        <Card title="Your identity" subtitle="A Semaphore identity, created in this browser and stored encrypted under your passphrase. Its commitment is the public value the issuer adds to a group.">
+          <IdentityPanel
+            unlocked={() => (
               <div className="actions">
                 <button className="primary" onClick={() => setStep(1)}>Continue <span>→</span></button>
-                {import.meta.env.DEV && <DevDemoButton setIdentity={setIdentity} />}
+                {import.meta.env.DEV && <DevDemoButton />}
               </div>
-            </>
-          )}
+            )}
+          />
         </Card>
       )}
 
@@ -309,50 +290,69 @@ export function DropPage({ identity, setIdentity, identityChecked }: Props) {
       {step === 2 && (
         <Card title="The document" subtitle="The file stays in this browser until you publish it in a later step.">
           <label className="dropzone">
-            <input type="file" accept=".txt,.md,.markdown,image/jpeg,image/png,image/webp,text/plain,text/markdown" onChange={(e) => void inspect(e.target.files?.[0])} />
+            <input type="file" accept=".txt,.md,.markdown,.pdf,application/pdf,image/jpeg,image/png,image/webp,text/plain,text/markdown" onChange={(e) => void inspect(e.target.files?.[0])} />
             <span className="drop-title">{file ? file.name : "Choose a document"}</span>
-            <span className="drop-hint">Text, Markdown, JPEG, PNG or WebP. PDF is not supported yet.</span>
+            <span className="drop-hint">Text, Markdown, PDF, JPEG, PNG or WebP. Up to 1 MiB after stripping.</span>
           </label>
           {working && <p className="muted">Preparing the file…</p>}
           {fileError && <Warn>{fileError}</Warn>}
           {prepared && digest && cid && (
             <>
-              <p className="field-label">Content digest (what the record stores)</p>
-              <code className="digest">{digest}</code>
+              <p className="field-label">Size after stripping</p>
+              <p className="small" data-testid="output-size">
+                {formatBytes(prepared.bytes.byteLength)}{file && file.size !== prepared.bytes.byteLength ? <span className="muted"> (the file you chose: {formatBytes(file.size)})</span> : null}
+              </p>
+              {overLimit && (
+                <Warn>
+                  <span data-testid="size-warning">The prepared file is {prepared.bytes.byteLength.toLocaleString("en-US")} bytes, over the 1 MiB ({PDF_PIN_LIMIT_BYTES.toLocaleString("en-US")} bytes) limit. Pinners reject it, so it cannot be posted. Reduce its size and choose it again.</span>
+                </Warn>
+              )}
+              <HashCompare before={originalHash} after={digest} />
               <p className="field-label">CID</p>
               <code className="digest" data-testid="cid">{cid}</code>
             </>
           )}
           <div className="actions">
-            <button className="primary" disabled={!prepared} onClick={() => setStep(3)}>Continue <span>→</span></button>
+            <button className="primary" disabled={!prepared || overLimit} onClick={() => setStep(3)}>Continue <span>→</span></button>
           </div>
         </Card>
       )}
 
       {step === 3 && prepared && (
         <Card title="Metadata review" subtitle="Compare what was in the file with what will be published. Nothing else leaves the browser.">
-          <div className="diff">
-            <div>
-              <p className="field-label">Found in your file</p>
-              {prepared.metadata ? (
-                <ul className="rows">
-                  <li><span>EXIF (may include GPS)</span><code className="mono">{prepared.metadata.found.exif ? "present" : "none"}</code></li>
-                  <li><span>XMP</span><code className="mono">{prepared.metadata.found.xmp ? "present" : "none"}</code></li>
-                </ul>
-              ) : <p className="muted small">Text files are normalised (line endings, Unicode NFC). No metadata fields exist to remove.</p>}
+          {prepared.pdf ? (
+            <PdfDiff removed={prepared.pdf.removed} />
+          ) : (
+            <div className="diff">
+              <div>
+                <p className="field-label">Found in your file</p>
+                {prepared.metadata ? (
+                  <ul className="rows">
+                    <li><span>EXIF (may include GPS)</span><code className="mono">{prepared.metadata.found.exif ? "present" : "none"}</code></li>
+                    <li><span>XMP</span><code className="mono">{prepared.metadata.found.xmp ? "present" : "none"}</code></li>
+                  </ul>
+                ) : <p className="muted small">Text files are normalised (line endings, Unicode NFC). No metadata fields exist to remove.</p>}
+              </div>
+              <div>
+                <p className="field-label">Published</p>
+                {prepared.metadata ? (
+                  <ul className="rows">
+                    <li><span>EXIF</span>{prepared.metadata.removed.includes("exif") ? <span className="redaction" aria-label="removed">removed</span> : <code className="mono">none to remove</code>}</li>
+                    <li><span>XMP</span>{prepared.metadata.removed.includes("xmp") ? <span className="redaction" aria-label="removed">removed</span> : <code className="mono">none to remove</code>}</li>
+                  </ul>
+                ) : <p className="muted small">Normalised text</p>}
+              </div>
             </div>
-            <div>
-              <p className="field-label">Published</p>
-              {prepared.metadata ? (
-                <ul className="rows">
-                  <li><span>EXIF</span>{prepared.metadata.removed.includes("exif") ? <span className="redaction" aria-label="removed">removed</span> : <code className="mono">none to remove</code>}</li>
-                  <li><span>XMP</span>{prepared.metadata.removed.includes("xmp") ? <span className="redaction" aria-label="removed">removed</span> : <code className="mono">none to remove</code>}</li>
-                </ul>
-              ) : <p className="muted small">Normalised text</p>}
+          )}
+          {digest && <HashCompare before={originalHash} after={digest} />}
+          {prepared.pdf && (
+            <div data-testid="pdf-residual">
+              <p className="field-label">Still in the file</p>
+              <ul className="warnings">{prepared.pdf.residual.map((r) => <li key={r}>{r}</li>)}</ul>
             </div>
-          </div>
+          )}
           <ul className="warnings">{prepared.warnings.map((w) => <li key={w}>{w}</li>)}</ul>
-          <Warn>We can't remove printer dots or details in the content itself. Read the document before you post it.</Warn>
+          <Warn>{prepared.pdf ? "A PDF is cleaned structurally, not rasterised: the page content, embedded images and any printer dots in them are exactly as they were. " : ""}We can't remove printer dots or details in the content itself. Read the document before you post it.</Warn>
           <label className="check">
             <input type="checkbox" checked={reviewed} onChange={(e) => setReviewed(e.target.checked)} />
             <span>I have read the document and understand what remains in it.</span>
@@ -512,6 +512,47 @@ function SummaryRow({ label, value, onEdit }: { label: string; value: string; on
       <span className="small muted">{label}</span>
       <span className="summary-value">{value}</span>
       <button className="link-button" onClick={onEdit}>Change</button>
+    </div>
+  );
+}
+
+/** Before/after SHA-256: the stripped file's hash is the one that is published. */
+function HashCompare({ before, after }: { before: string | undefined; after: string }) {
+  const same = before === after;
+  return (
+    <div data-testid="hash-compare">
+      <p className="field-label">SHA-256 of the file you chose</p>
+      <code className="digest" data-testid="hash-before">{before ?? "computing…"}</code>
+      <p className="field-label">SHA-256 of the prepared file (this is the digest the record stores and what gets published)</p>
+      <code className="digest" data-testid="hash-after">{after}</code>
+      {before && (
+        <p className="small muted">
+          {same ? "The two are equal: preparing the file did not change a byte." : "The two differ, as expected: stripping or normalising rewrites the bytes. The published hash is not the hash of your original file."}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** PDF metadata diff: what the file carried on the left, redaction bars on the right. */
+function PdfDiff({ removed }: { removed: string[] }) {
+  if (removed.length === 0) {
+    return <p className="muted small" data-testid="pdf-diff">No covered PDF metadata fields were found in this file (Info dictionary, XMP, document ID, attachments, JavaScript). Nothing needed removing.</p>;
+  }
+  return (
+    <div className="diff" data-testid="pdf-diff">
+      <div>
+        <p className="field-label">Found in your file</p>
+        <ul className="rows">
+          {removed.map((r) => <li key={r}><span>{r}</span></li>)}
+        </ul>
+      </div>
+      <div>
+        <p className="field-label">Published</p>
+        <ul className="rows">
+          {removed.map((r) => <li key={r}><span className="muted small">{r.split(" (")[0]}</span><span className="redaction" aria-label="removed">removed</span></li>)}
+        </ul>
+      </div>
     </div>
   );
 }

@@ -291,10 +291,36 @@ function BundleResult({ bundle, check }: { bundle: ProofBundle; check: BundleVer
   );
 }
 
+/** An object URL that lives exactly as long as the effect (so React StrictMode's mount/unmount/mount cannot leave it revoked). */
+function useBlobUrl(bytes: Uint8Array, type: string | undefined): string | undefined {
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    if (!type) return;
+    const created = URL.createObjectURL(new Blob([bytes as BlobPart], { type }));
+    setUrl(created);
+    return () => {
+      URL.revokeObjectURL(created);
+      setUrl(undefined);
+    };
+  }, [bytes, type]);
+  return url;
+}
+
 function DocView({ bytes, cid }: { bytes: Uint8Array; cid: string }) {
   const sniffed = useMemo(() => sniff(bytes), [bytes]);
-  const url = useMemo(() => (sniffed.kind === "image" ? URL.createObjectURL(new Blob([bytes as BlobPart], { type: sniffed.mediaType })) : undefined), [bytes, sniffed]);
-  useEffect(() => () => (url ? URL.revokeObjectURL(url) : undefined), [url]);
+  const url = useBlobUrl(bytes, sniffed.kind === "image" ? sniffed.mediaType : undefined);
+  const pdfUrl = useBlobUrl(bytes, sniffed.kind === "pdf" ? "application/pdf" : undefined);
+  if (sniffed.kind === "pdf" && pdfUrl) {
+    return (
+      <div data-testid="doc-pdf">
+        <p className="small muted">A PDF document, {bytes.length.toLocaleString("en-US")} bytes. It is not rendered inside this page (the page's security policy blocks embedded documents). Open it in your browser's own viewer or download it. Its content was never inspected here: read it before you trust it.</p>
+        <div className="actions tight">
+          <a className="secondary small-btn brass-link" href={pdfUrl} target="_blank" rel="noopener noreferrer" data-testid="open-pdf">Open the PDF in a new tab</a>
+          <button className="secondary" onClick={() => download(`${cid.slice(0, 16)}.pdf`, bytes as BlobPart, "application/pdf")}>Download PDF</button>
+        </div>
+      </div>
+    );
+  }
   if (sniffed.kind === "text") return <pre className="doc-text" data-testid="doc-text">{sniffed.text}</pre>;
   if (sniffed.kind === "image" && url) return <img className="doc-image" src={url} alt="The disclosed document" />;
   return (

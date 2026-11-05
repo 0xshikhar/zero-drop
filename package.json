@@ -12,7 +12,10 @@
     "contracts:deploy": "tsx scripts/deploy.ts",
     "contracts:fixture": "tsx scripts/make-fixture.ts",
     "abi:export": "tsx scripts/export-abi.ts",
-    "pinner": "tsx scripts/pinner.ts"
+    "pinner": "tsx scripts/pinner.ts",
+    "stack:up": "tsx scripts/stack.ts up",
+    "stack:down": "tsx scripts/stack.ts down",
+    "stack:status": "tsx scripts/stack.ts status"
   },
   "packageManager": "pnpm@10.0.0",
   "devDependencies": {

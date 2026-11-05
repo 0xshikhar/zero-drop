@@ -6,11 +6,11 @@ import { zeroDropAbi } from "../lib/adapter";
 import { loadGroups, readClient, requireDeployment, walletFor, type GroupView } from "../lib/chain";
 import { networkGate, useBootState, useNetworkPlan } from "../lib/network";
 import { useDeployment, useSettings } from "../lib/prefs";
-import type { Identity } from "../lib/session";
+import { useSession } from "../lib/session";
+import { IdentityHint } from "./IdentityPanel";
 import { download, errorMessage, short } from "../lib/util";
 import { Card, CopyButton, Tick, Warn } from "./common";
 
-type Props = { identity: Identity | undefined };
 
 const FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 const PRIVATE_KEY = /^0x[0-9a-fA-F]{64}$/;
@@ -39,7 +39,8 @@ export function parseCommitments(text: string): { values: bigint[]; errors: stri
   return { values, errors };
 }
 
-export function GroupsPage({ identity }: Props) {
+export function GroupsPage() {
+  const { identity } = useSession();
   const deployment = useDeployment();
   const settings = useSettings();
   const plan = useNetworkPlan();
@@ -88,7 +89,7 @@ export function GroupsPage({ identity }: Props) {
               <button className="secondary small-btn" onClick={() => download("zerodrop-commitment.txt", `${commitment}\n`, "text/plain")}>Download commitment file</button>
             </div>
           </>
-        ) : <p className="muted">No identity yet. Create one on the Post page.</p>}
+        ) : <IdentityHint />}
       </Card>
 
       <div className="card">

@@ -1,3 +1,4 @@
+import { BUNDLE_MEDIA_TYPES, type BundleMediaType } from "@zerodrop/core";
 import type { Hex } from "viem";
 
 const BASE32 = "abcdefghijklmnopqrstuvwxyz234567";
@@ -25,6 +26,7 @@ export function cidFromDigest(digest: Hex): string {
 
 export type Sniffed =
   | { kind: "image"; mediaType: "image/png" | "image/jpeg" | "image/webp" }
+  | { kind: "pdf" }
   | { kind: "text"; text: string }
   | { kind: "binary" };
 
@@ -36,6 +38,8 @@ export function sniff(bytes: Uint8Array): Sniffed {
   if (startsWith(0x52, 0x49, 0x46, 0x46) && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) {
     return { kind: "image", mediaType: "image/webp" };
   }
+  // The header may be preceded by a few junk bytes; the spec allows it within the first 1024.
+  if (new TextDecoder("latin1").decode(bytes.subarray(0, 1024)).includes("%PDF-")) return { kind: "pdf" };
   try {
     const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
     if (!text.includes("\u0000")) return { kind: "text", text };
@@ -48,6 +52,15 @@ export function sniff(bytes: Uint8Array): Sniffed {
 export function mediaTypeOf(bytes: Uint8Array): "text/plain" | "image/jpeg" | "image/png" | "image/webp" {
   const s = sniff(bytes);
   return s.kind === "image" ? s.mediaType : "text/plain";
+}
+
+/**
+ * The media type to record in a proof bundle. Uses what prepareDocument produced when the bundle format accepts it
+ * (application/pdf only once core's BUNDLE_MEDIA_TYPES lists it); otherwise falls back to a sniff, which labels a
+ * PDF "text/plain". The reader always sniffs the bytes, so the label does not change how the document opens.
+ */
+export function bundleMediaType(prepared: string, bytes: Uint8Array): BundleMediaType {
+  return (BUNDLE_MEDIA_TYPES as readonly string[]).includes(prepared) ? (prepared as BundleMediaType) : mediaTypeOf(bytes);
 }
 
 /** Triggers a browser download of `data`. */
