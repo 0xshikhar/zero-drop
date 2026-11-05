@@ -7,7 +7,11 @@
     "build": "pnpm --filter @zerodrop/web build",
     "dev": "pnpm --filter @zerodrop/web dev",
     "test:contracts": "cd contracts && forge test",
-    "build:contracts": "cd contracts && forge build"
+    "build:contracts": "cd contracts && forge build",
+    "test:core": "pnpm --filter @zerodrop/core test",
+    "contracts:deploy": "tsx scripts/deploy.ts",
+    "contracts:fixture": "tsx scripts/make-fixture.ts",
+    "abi:export": "tsx scripts/export-abi.ts"
   },
   "packageManager": "pnpm@10.0.0",
   "devDependencies": {
