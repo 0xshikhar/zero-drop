@@ -7,8 +7,8 @@
  * depth-specific Semaphore circuit files in SEMAPHORE_ARTIFACTS_DIR (see README, "Circuit artifacts").
  * Env: RPC_URL, SEMAPHORE_ARTIFACTS_DIR, DEMO_FILE (optional path to a text or image file).
  */
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   createPublicClient,
@@ -34,12 +34,17 @@ import {
 } from "../packages/core/src/index.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const config = JSON.parse(readFileSync(resolve(root, "config/local.json"), "utf8")) as {
+// CONFIG selects the deployment (default config/local.json); members come from the matching
+// .local/demo-members.<name>.json written by seed-group.ts.
+const configPath = resolve(root, process.env.CONFIG ?? "config/local.json");
+const configName = basename(configPath, ".json");
+const config = JSON.parse(readFileSync(configPath, "utf8")) as {
   rpcUrl: string;
   chainId: number;
   contracts: { zeroDrop: Hex };
 };
-const members = JSON.parse(readFileSync(resolve(root, ".local/demo-members.json"), "utf8")) as {
+const membersPath = resolve(root, `.local/demo-members.${configName}.json`);
+const members = JSON.parse(readFileSync(existsSync(membersPath) ? membersPath : resolve(root, ".local/demo-members.json"), "utf8")) as {
   groupId: string;
   root: string;
   members: string[];

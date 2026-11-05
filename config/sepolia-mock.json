@@ -1,0 +1,14 @@
+{
+  "chainId": 11155111,
+  "rpcUrl": "https://ethereum-sepolia-rpc.publicnode.com",
+  "verifierKind": "mock",
+  "directRecordEnabled": true,
+  "verifierLocked": false,
+  "stakingRegistry": null,
+  "mockGasToBurn": "300000",
+  "contracts": {
+    "zeroDrop": "0x5b382573cc96033a46d4acb07302c1508b675236",
+    "mockVerifier": "0xed775fd54f3505a3fcf62c1b9226a6f91766573d"
+  },
+  "deployedBlock": 12079575
+}

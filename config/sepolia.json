@@ -1,0 +1,14 @@
+{
+  "chainId": 11155111,
+  "rpcUrl": "https://ethereum-sepolia-rpc.publicnode.com",
+  "verifierKind": "semaphore",
+  "directRecordEnabled": true,
+  "verifierLocked": true,
+  "stakingRegistry": null,
+  "contracts": {
+    "zeroDrop": "0xc41852d540a3dee573290583bef250c9db56682c",
+    "verifierAdapter": "0x7cb0695feb7626da5fd204cc2c97489b31d1a3a5",
+    "semaphoreVerifier": "0x04d37f78261a81d2db38a9dd7eb2fe5c51b53fd4"
+  },
+  "deployedBlock": 12079568
+}

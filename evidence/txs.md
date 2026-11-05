@@ -1,9 +1,12 @@
 # Transactions and addresses
 
-Two chains appear in this repository. Do not mix them up.
+Three chains appear in this repository. Do not mix them up.
 
 - **Local anvil, chain id 31337.** Real, run on a development machine. In-memory state, no explorer. Public test keys.
+- **Sepolia, chain id 11155111.** Public testnet, Etherscan-visible. Ordinary transactions only (Sepolia has no EIP-8141 frame transactions), so the poster's address is on chain. See section 3.
 - **Alt-mempool devnet, chain id 1337.** The one the hackathon asks for. **Not reached yet.** Its section below is empty.
+
+> **Clock note.** The development machine's clock was found to be 24 hours slow (checked against Google, Cloudflare and GitHub `Date` headers and `sntp time.apple.com`, offset +86,406 s). The devnet "certificate not yet valid" failures recorded in `devnet-status.md` were caused by that skew, not by the devnet. Timestamps marked "this machine's clock" are one day early.
 
 ## 1. Local anvil (chain 31337): real entries
 
@@ -136,3 +139,40 @@ See [`canonical-rejection.md`](canonical-rejection.md). Paste the captured respo
 | Request (method, endpoint) | |
 | Response verbatim | |
 | Same transaction through the alt mempool | |
+
+## 3. Sepolia (chain 11155111): real entries
+
+Deployed and read back on 2026-11-06 (real time). Deployer `0x1B4AcaBA13f8B3B858c0796A7d62FC35A5ED3BA5`. Every row was listed from the chain with `scripts/list-deployer-txs.ts`. Explorer: `https://sepolia.etherscan.io/tx/<hash>`.
+
+These are direct transactions from an ordinary account: the poster's address is visible. This shows the contracts and the real Semaphore verifier on a public chain; it is not alt-mempool evidence.
+
+### 3a. `config/sepolia.json` (Semaphore verifier, locked, direct path on)
+
+| What | Address | Block | Tx | Gas used |
+|---|---|---|---|---|
+| ZeroDrop | `0xc41852d540a3dee573290583bef250c9db56682c` | 12079568 | `0x900960c737b3258cfde0c382dfdfcf40e25da92d3ecfabd7cca1b1e730ef833f` | 14,449,658 |
+| SemaphoreVerifier | `0x04d37f78261a81d2db38a9dd7eb2fe5c51b53fd4` | 12079569 | `0x7f2a12aa29fb57f180de7de1e816cc150e2ce811c947ab3b60030148158d19f4` | 24,962,067 |
+| SemaphoreVerifierAdapter | `0x7cb0695feb7626da5fd204cc2c97489b31d1a3a5` | 12079570 | `0xe01519a3d01994572e86c391ce1fa2a40f5c46fffc8f1c3015b3e6c31a46e920` | 2,452,287 |
+| setVerifier | | 12079572 | `0xd841c09f27313892b02f5c9886e52cd216835ec8a89b858df145049b4c1f4119` | 127,294 |
+| lockVerifier | | 12079573 | `0x12c44382d1f78cd70c88b010c21687e77fb1fde7527111276c6e96e4b1be4a7c` | 28,496 |
+| createGroup (group 1, minSize 3) | | 12079579 | `0x72e0e4497a1f0bd5c35f58b82493fa13e4677c8df013b227e3fcf6113f7e42e7` | 254,962 |
+| addMembers (4 members) | | 12079581 | `0xa759d318ea0bbbe1ecae8b7ad48d9b8ebb244c0c4e46d369bb3127793a4c6d19` | 366,675 |
+| **record with a real Semaphore proof** | | **12079587** | **`0x3e9b59d8253892e8fe41fc8e53154088e315bd1ca95d61bf3f166553c670948e`** | **924,910** |
+
+The disclosure: cidDigest `0x40021be7291da47a44c3830fba5e7c49a23d6c6fb72fe4fdde0488836054ad4c`, CID `bafkreicaain6oki5ur5ejq4db65f47cjui6wy35xf7sp3xqercbwavfnjq`, depth-2 Groth16 proof accepted by the on-chain verifier. `scripts/demo.ts` output: local proof check true, L0 ok, L1 ok, L2 ok.
+
+Reader check with two independent RPCs (`scripts/check-inclusion.ts`, Alchemy and publicnode): 2 of 2 agree on the record, the `Disclosed` log and block hash `0xd702f6f596dd063cb0cc68561b940965ac6ac94309b6a4e7125b7ac53985a7a7`; the record is proven by storage proof against the quorum state root; anonymity set 4. Not a light client.
+
+### 3b. `config/sepolia-mock.json` (MockVerifier burning 300k gas, direct path on)
+
+| What | Address | Block | Tx | Gas used |
+|---|---|---|---|---|
+| ZeroDrop | `0x5b382573cc96033a46d4acb07302c1508b675236` | 12079575 | `0x8ef770614dc827e6f0ec78d5e317c0dae16b62ae9110efdfec59ff5bcd93da42` | 14,449,658 |
+| MockVerifier | `0xed775fd54f3505a3fcf62c1b9226a6f91766573d` | 12079576 | `0xef022be3bb50e001bab531bd85c2b6ee5c173c57fc6e136c188faa2f60a01f86` | 984,008 |
+| setVerifier | | 12079577 | `0x9821151023606374028fa85e89e9fd354634927e754991c63827aa194e470824` | 127,294 |
+| createGroup (group 1, minSize 3) | | 12079583 | `0xaf15ef276312623cc5f5ae9e3521dac2cb64444da6040bc2d55efee1d2b8e94d` | 254,962 |
+| addMembers (4 members) | | 12079584 | `0x6c21a33a35919c2c7a1d96c8e1d4a53fff5fa7c6c2a02a79900fd3e0ea8fb935` | 366,663 |
+
+No mock disclosure recorded on Sepolia yet.
+
+Gas on Sepolia was 2 to 7 times the local figure for the same operations (deployment about 6.9x, `record` about 2.3x). Runtime code sizes are normal. The cause is not confirmed.
