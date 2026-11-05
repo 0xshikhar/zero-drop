@@ -8,3 +8,7 @@ export * from "./verify-proof";
 export * from "./chain";
 export * from "./l1";
 export * from "./frametx";
+export * from "./pin";
+export * from "./resolve";
+export * from "./bundle";
+export * from "./settings";

@@ -2,6 +2,40 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      Content-Security-Policy. This tag is the source file; vite.config.ts (plugin zerodrop:csp) rewrites it:
+      - build: the placeholder sha256 below becomes the real hashes of the inline script/style produced by
+        vite-plugin-singlefile plus the Anon-RPC harness bootstrap script, and 'self' is dropped from
+        script-src/style-src. The shipped page has no 'unsafe-inline'.
+      - dev: the placeholder becomes 'unsafe-inline' and the HMR websocket is allowed.
+      Why each directive:
+      - connect-src: the page itself only talks to 'self', data:/blob: (bundled ZK artifacts, bundle
+        resolvers) and local dev nodes. Requests that go through Anon-RPC are made by the harness worker
+        and do not appear as page requests, so RPC/sidecar/pinner hosts are NOT listed (they could not be
+        known statically). Extra origins for direct mode or the bootstrap RPC are added at build time with
+        ZERODROP_CSP_CONNECT.
+      - script-src blob: + worker-src blob: + 'wasm-unsafe-eval': the harness blob-spawns its worker and
+        loads the hash-verified anon-client with importScripts(blob:); the worker inherits this policy.
+        WebAssembly is allowed because a Tor client and the Semaphore prover use it.
+      - frame-src 'none': the harness iframe is a srcdoc document, which is not subject to frame-src.
+        (Setting iframeUrl would need frame-src 'self'.)
+      CSP in a meta tag cannot set frame-ancestors, report-uri or sandbox.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none';
+        script-src 'self' blob: 'wasm-unsafe-eval' 'sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
+        style-src 'self' 'sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
+        connect-src 'self' data: blob: http://127.0.0.1:* http://localhost:*;
+        img-src 'self' data: blob:;
+        font-src 'self' data:;
+        media-src 'self' blob:;
+        worker-src blob:;
+        frame-src 'none';
+        object-src 'none';
+        base-uri 'none';
+        form-action 'none'"
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0B0F0C" />
     <meta name="description" content="Publish documents without publishing who you are." />

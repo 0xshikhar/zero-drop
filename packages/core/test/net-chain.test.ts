@@ -35,12 +35,12 @@ describe("NetworkClient traffic accounting", () => {
     expect(net.summary()).toEqual({ total: 1, anonymous: 0, direct: 1 });
   });
 
-  it("the anonymous placeholder throws NotConfiguredError and is counted as anonymous", async () => {
+  it("an unconfigured anonymous transport throws NotConfiguredError and is counted as anonymous", async () => {
     const anon = new AnonRpcTransport();
     const net = new NetworkClient(anon.fetch, { route: "anonymous" });
     const attempt = net.fetch("https://rpc.example/anon");
     await expect(attempt).rejects.toBeInstanceOf(NotConfiguredError);
-    await expect(attempt).rejects.toThrow("Anon-RPC worker is not integrated in this build");
+    await expect(attempt).rejects.toThrow("Anon-RPC is not configured");
     expect(net.summary()).toEqual({ total: 1, anonymous: 1, direct: 0 });
   });
 
