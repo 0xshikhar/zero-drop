@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Hex, PublicClient } from "viem";
 import { verifyInclusion, type VerifyInclusionArgs } from "../src/l1";
+import { buildChain, fakeProofClient, flipNode, type Tamper } from "./helpers/proofchain";
 
 const ZERODROP = "0x00000000000000000000000000000000000000cd" as const;
 const CID = `0x${"ab".repeat(32)}` as Hex;
@@ -72,7 +73,8 @@ describe("verifyInclusion with two endpoints", () => {
       blockHash: HASH_A,
       agreeingEndpoints: 2,
     });
-    expect(result.notes.join(" ")).toMatch(/eth_getProof storage verification is NOT implemented/);
+    expect(result.storageProofVerified).toBe(false);
+    expect(result.notes.join(" ")).toMatch(/Storage proof NOT verified: the endpoints do not serve eth_getProof/);
   });
 
   it("is not ok when the endpoints disagree on the block hash", async () => {
@@ -192,5 +194,74 @@ describe("verifyInclusion quorum configuration", () => {
   it("no endpoints is refused", async () => {
     const result = await verifyInclusion(args({ publicClients: [] }));
     expect(result.ok).toBe(false);
+  });
+});
+
+describe("verifyInclusion with a storage proof", () => {
+  const RECORD = { cidDigest: CID, groupId: 1n, caseId: CASE, root: 42n, nullifier: 7n, blockNumber: 100n, size: 4n };
+
+  /** The plain-read answers of fakeClient plus a raw `request` serving a real proof chain. */
+  async function proofClients(n: number, tampers: Tamper[] = [], recordOverride: Partial<typeof RECORD> = {}) {
+    const chain = await buildChain({ address: ZERODROP, record: { ...RECORD, ...recordOverride }, number: 120n });
+    return Array.from({ length: n }, (_, i) => {
+      const plain = fakeClient() as unknown as Record<string, unknown>;
+      const proof = fakeProofClient(chain, tampers[i] ?? {}) as unknown as Record<string, unknown>;
+      return { ...plain, request: proof.request } as unknown as PublicClient;
+    });
+  }
+
+  it("verifies the record by storage proof with a quorum, and reports the anonymity set", async () => {
+    const result = await verifyInclusion(args({ publicClients: await proofClients(2) }));
+    expect(result.ok).toBe(true);
+    expect(result.storageProofVerified).toBe(true);
+    expect(result.anonymitySet).toBe(4n);
+    expect(result.storageProof?.headerChecked).toBe(true);
+    expect(result.reason).toMatch(/proven by storage proof against the quorum state root/);
+    expect(result.reason).not.toMatch(/Storage proof NOT verified/);
+  });
+
+  it("single endpoint with a proof states the exact trust limit", async () => {
+    const result = await verifyInclusion(args({ publicClients: await proofClients(1), quorum: "single-endpoint" }));
+    expect(result.ok).toBe(true);
+    expect(result.storageProofVerified).toBe(true);
+    expect(result.reason).toMatch(/state root that one RPC served; that state root is trusted to it/);
+    expect(result.notes.join(" ")).toMatch(/not on the canonical chain/);
+  });
+
+  it("is not ok when a storage proof is tampered with", async () => {
+    const tamper: Tamper = { proof: (p) => ((p.storageProof[0].proof = flipNode(p.storageProof[0].proof)), p) };
+    const result = await verifyInclusion(args({ publicClients: await proofClients(1, [tamper]), quorum: "single-endpoint" }));
+    expect(result.ok).toBe(false);
+    expect(result.storageProofVerified).toBe(false);
+    expect(result.reason).toMatch(/^storage proof:/);
+  });
+
+  it("is not ok when the proven storage differs from the records() getter", async () => {
+    const result = await verifyInclusion(args({ publicClients: await proofClients(2, [], { nullifier: 8n }) }));
+    expect(result.ok).toBe(false);
+    expect(result.reason).toMatch(/proven storage differs from what the records\(\) getter returned/);
+  });
+
+  it("falls back to the plain reads and says so when eth_getProof is not served", async () => {
+    const result = await verifyInclusion(args({ publicClients: await proofClients(2, [{ noProof: true }, { noProof: true }]) }));
+    expect(result.ok).toBe(true);
+    expect(result.storageProofVerified).toBe(false);
+    expect(result.notes.join(" ")).toMatch(/Storage proof NOT verified: the endpoints do not serve eth_getProof/);
+    expect(result.reason).toMatch(/Storage proof NOT verified/);
+  });
+
+  it("storageProof: true makes a missing eth_getProof a failure", async () => {
+    const result = await verifyInclusion(
+      args({ publicClients: await proofClients(2, [{ noProof: true }, { noProof: true }]), storageProof: true }),
+    );
+    expect(result.ok).toBe(false);
+    expect(result.reason).toMatch(/storage proof required but unavailable/);
+  });
+
+  it("storageProof: false skips the proof and says so", async () => {
+    const result = await verifyInclusion(args({ publicClients: await proofClients(2), storageProof: false }));
+    expect(result.ok).toBe(true);
+    expect(result.storageProofVerified).toBe(false);
+    expect(result.notes.join(" ")).toMatch(/skipped by the caller/);
   });
 });

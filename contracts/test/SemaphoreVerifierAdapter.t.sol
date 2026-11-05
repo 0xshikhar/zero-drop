@@ -115,6 +115,43 @@ contract SemaphoreVerifierAdapterTest is Test {
         assertTrue(zd.nullifierUsed(scope, nullifier));
     }
 
+    /// @dev Gas of the SENDER frame body on the frame path: `record()` called by the contract itself, which skips the
+    ///      verifier. Measured with every touched account and slot cold, as in a fresh transaction (the VERIFY frame
+    ///      may or may not have warmed them on a real node; cold is the safe bound). Compare with the direct path
+    ///      above, which pays for the Groth16 check.
+    function test_frameBodyGas_selfCallSkipsVerification() public {
+        zd.setVerifier(address(adapter));
+        _fixtureGroup();
+
+        vm.cool(address(zd));
+        vm.cool(address(adapter));
+        vm.cool(address(semaphore));
+        vm.prank(address(zd));
+        uint256 gasBefore = gasleft();
+        zd.record(groupId, caseId, cidDigest, root, nullifier, depth, proof);
+        uint256 used = gasBefore - gasleft();
+        console2.log("record() gas on the frame path, verifier skipped (cold):", used);
+        assertLt(used, 200_000, "the skip path does not pay for the Groth16 check");
+        assertLe(used, DisclosureFrameChecks.MIN_BODY_GAS);
+
+        (,,,,, bool exists) = zd.records(cidDigest);
+        assertTrue(exists);
+    }
+
+    function test_directPathGas_coldBaseline() public {
+        zd.setVerifier(address(adapter));
+        _fixtureGroup();
+
+        vm.cool(address(zd));
+        vm.cool(address(adapter));
+        vm.cool(address(semaphore));
+        uint256 gasBefore = gasleft();
+        zd.record(groupId, caseId, cidDigest, root, nullifier, depth, proof);
+        uint256 used = gasBefore - gasleft();
+        console2.log("record() gas on the direct path, with verification (cold):", used);
+        assertLe(used, DisclosureFrameChecks.MIN_BODY_GAS);
+    }
+
     function test_recordWithRealProof_rejectsReplayInSameCase() public {
         zd.setVerifier(address(adapter));
         _fixtureGroup();

@@ -586,16 +586,139 @@ contract ZeroDropFrameTest is Test {
         (bool ok,) = _verify();
         assertTrue(ok, "same proof, the document it was made for");
 
-        // Body frame: same rule on the self-call path.
-        vm.prank(address(zd));
-        vm.expectRevert(ZeroDrop.InvalidProof.selector);
-        zd.record(f.g, f.caseId, f.cidB, f.root, f.nullifier, f.depth, f.proof);
+        // Body frame: `record` no longer re-verifies on the self-call path. It executes the calldata the VERIFY frame
+        // already verified (cid A). The direct path's rejection of a mismatched document is covered in
+        // SemaphoreVerifierAdapter.t.sol (test_recordWithRealProof_boundToDocument).
         vm.prank(address(zd));
         zd.record(f.g, f.caseId, f.cidA, f.root, f.nullifier, f.depth, f.proof);
     }
+
+    // ---------------------------------------------------------------- one verification on the frame path
+
+    bytes internal constant VERIFY_PREFIX = abi.encodeWithSelector(IDisclosureVerifier.verify.selector);
+
+    /// @dev A whole disclosure transaction: VERIFY frame (fallback from 0xaa) then SENDER frame (record from self).
+    ///      The verifier is called exactly once across both frames.
+    function test_framePath_verifiesOnce() public {
+        uint256 g = _group();
+        _script(zd, g, CID, ROOT, NULLIFIER, proofBytes);
+
+        vm.expectCall(address(mock), VERIFY_PREFIX, 1);
+        (bool ok,) = _verify();
+        assertTrue(ok);
+        vm.prank(address(zd));
+        zd.record(g, CASE, CID, ROOT, NULLIFIER, DEPTH, proofBytes);
+
+        (,,,,, bool exists) = zd.records(CID);
+        assertTrue(exists);
+        assertTrue(zd.nullifierUsed(zd.scopeOf(CASE), NULLIFIER));
+    }
+
+    function test_framePath_recordMakesNoVerifierCall() public {
+        uint256 g = _group();
+        vm.expectCall(address(mock), VERIFY_PREFIX, 0);
+        vm.prank(address(zd));
+        zd.record(g, CASE, CID, ROOT, NULLIFIER, DEPTH, proofBytes);
+    }
+
+    function test_framePath_recordDoesNotConsultAVerifierThatRejects() public {
+        uint256 g = _group();
+        zd.setVerifier(address(new RejectingVerifier()));
+        // The VERIFY frame is what rejects a bad proof. `record` on the self-call path trusts it.
+        vm.prank(address(zd));
+        zd.record(g, CASE, CID, ROOT, NULLIFIER, DEPTH, proofBytes);
+        _expectVerifyRevert(abi.encodeWithSelector(ZeroDrop.AlreadyRecorded.selector));
+    }
+
+    /// @dev The direct path still verifies, once.
+    function test_directPath_stillCallsTheVerifierOnce() public {
+        ZeroDrop local = new ZeroDrop(true, address(0));
+        local.setVerifier(address(mock));
+        uint256 g = local.createGroup(2);
+        uint256[] memory c = new uint256[](2);
+        c[0] = 1;
+        c[1] = 2;
+        local.addMembers(g, c, ROOT);
+
+        vm.expectCall(address(mock), VERIFY_PREFIX, 1);
+        vm.prank(alice);
+        local.record(g, CASE, CID, ROOT, NULLIFIER, DEPTH, proofBytes);
+    }
+
+    function test_directPath_rejectsABadProof() public {
+        ZeroDrop local = new ZeroDrop(true, address(0));
+        local.setVerifier(address(new RejectingVerifier()));
+        uint256 g = local.createGroup(2);
+        uint256[] memory c = new uint256[](2);
+        c[0] = 1;
+        c[1] = 2;
+        local.addMembers(g, c, ROOT);
+        vm.prank(alice);
+        vm.expectRevert(ZeroDrop.InvalidProof.selector);
+        local.record(g, CASE, CID, ROOT, NULLIFIER, DEPTH, proofBytes);
+    }
+
+    /// @dev The skip only drops the verifier call. Every state precondition still holds on the self-call path.
+    function test_framePath_recordStillChecksState() public {
+        uint256 g = _group();
+
+        vm.prank(address(zd));
+        vm.expectRevert(ZeroDrop.UnknownRoot.selector);
+        zd.record(g, CASE, CID, ROOT + 1, NULLIFIER, DEPTH, proofBytes);
+
+        vm.prank(address(zd));
+        vm.expectRevert(ZeroDrop.InvalidNullifier.selector);
+        zd.record(g, CASE, CID, ROOT, 0, DEPTH, proofBytes);
+
+        vm.prank(address(zd));
+        vm.expectRevert(ZeroDrop.InvalidCid.selector);
+        zd.record(g, CASE, bytes32(0), ROOT, NULLIFIER, DEPTH, proofBytes);
+
+        vm.prank(address(zd));
+        vm.expectRevert(ZeroDrop.InvalidGroup.selector);
+        zd.record(g + 1, CASE, CID, ROOT, NULLIFIER, DEPTH, proofBytes);
+
+        vm.prank(address(zd));
+        zd.record(g, CASE, CID, ROOT, NULLIFIER, DEPTH, proofBytes);
+
+        vm.prank(address(zd));
+        vm.expectRevert(ZeroDrop.AlreadyRecorded.selector);
+        zd.record(g, CASE, CID, ROOT, NULLIFIER + 1, DEPTH, proofBytes);
+
+        vm.prank(address(zd));
+        vm.expectRevert(ZeroDrop.NullifierAlreadyUsed.selector);
+        zd.record(g, CASE, keccak256("cid-2"), ROOT, NULLIFIER, DEPTH, proofBytes);
+    }
+
+    function test_framePath_recordStillChecksGroupSize() public {
+        uint256 g = zd.createGroup(5);
+        uint256[] memory c = new uint256[](2);
+        c[0] = 1;
+        c[1] = 2;
+        zd.addMembers(g, c, ROOT);
+        vm.prank(address(zd));
+        vm.expectRevert(ZeroDrop.InsufficientGroupSize.selector);
+        zd.record(g, CASE, CID, ROOT, NULLIFIER, DEPTH, proofBytes);
+    }
+
+    /// @dev Invariant behind the skip: the contract cannot be made to call itself. A verifier pointing at ZeroDrop
+    ///      (the one external address the owner chooses) reaches `fallback()`, reverts, and gets no self-call.
+    function test_verifierPointingAtZeroDrop_cannotRecord() public {
+        ZeroDrop local = new ZeroDrop(true, address(0));
+        local.setVerifier(address(local));
+        uint256 g = local.createGroup(2);
+        uint256[] memory c = new uint256[](2);
+        c[0] = 1;
+        c[1] = 2;
+        local.addMembers(g, c, ROOT);
+        vm.prank(alice);
+        vm.expectRevert();
+        local.record(g, CASE, CID, ROOT, NULLIFIER, DEPTH, proofBytes);
+        (,,,,, bool exists) = local.records(CID);
+        assertFalse(exists);
+    }
 }
 
-/// @dev Accepts only an exact tuple, including the proof bytes.
 contract ExactVerifier is IDisclosureVerifier {
     bytes32 internal immutable expected;
 

@@ -1,5 +1,6 @@
 import { parseAbi, type Address, type Hex, type PublicClient } from "viem";
 import { fanOutRead, stableKey } from "./chain";
+import { ProofUnsupportedError, verifyRecordStorageProof, type StorageProofResult } from "./storageproof";
 
 /**
  * Minimal ABI for the two reads used here. It is written locally on purpose: this module needs only
@@ -25,6 +26,14 @@ export type VerifyInclusionArgs = {
   quorum: number | "single-endpoint";
   /** When given, every endpoint must also report this chain id. */
   expectedChainId?: number;
+  /**
+   * Storage proof of the record (`eth_getProof`, verified locally against the block's state root).
+   * - "auto" (default): do it when the endpoints serve `eth_getProof`. Otherwise fall back to the plain
+   *   reads and say so in `notes` (`storageProofVerified` is false).
+   * - true: required. Endpoints without `eth_getProof` make the result not ok.
+   * - false: skip, plain reads only.
+   */
+  storageProof?: boolean | "auto";
 };
 
 export type InclusionResult = {
@@ -41,6 +50,12 @@ export type InclusionResult = {
   blockHash?: Hex;
   /** Endpoints that agreed on the block hash. */
   agreeingEndpoints: number;
+  /** The record was proven against a state root by `eth_getProof` and local MPT verification. */
+  storageProofVerified: boolean;
+  /** The full storage proof result, when one was attempted. */
+  storageProof?: StorageProofResult;
+  /** Members covered by the record's root (`rootSize`), proven by the storage proof. */
+  anonymitySet?: bigint;
 };
 
 /**
@@ -54,17 +69,26 @@ export type InclusionResult = {
  * - The block hash at that height is read from every endpoint, and the quorum must agree. The log's
  *   blockHash must equal it.
  *
- * NOT implemented in this step: eth_getProof storage verification of `records[cidDigest]`, and of
- * `knownRoot`, checked against the block's state root. The answer is trusted to the RPC quorum, which
- * is k-of-n header agreement, not a light client. This is the Phase 0 fallback path; the proof-based
- * check is the next step (viem getProof plus an MPT verifier).
+ * - Storage proof (default, when the endpoints serve `eth_getProof`): `records[cidDigest]` and the
+ *   `knownRoot` / `rootSize` entries of its root are proven by Merkle-Patricia proofs against the state
+ *   root of a recent block, and the proven values must equal the record read above. See
+ *   `verifyRecordStorageProof` for what that proves and its trust limit: with a quorum it is a k-of-n
+ *   header agreement (not a light client); with "single-endpoint" the state root is trusted to that one
+ *   RPC and the record is proven against it. Without `eth_getProof` the check falls back to the plain
+ *   reads above and says so in `notes`.
  */
 export async function verifyInclusion(args: VerifyInclusionArgs): Promise<InclusionResult> {
   const { publicClients: clients, zeroDropAddress, cidDigest, expectedRoot, quorum, expectedChainId } = args;
-  const notes: string[] = [
-    "eth_getProof storage verification is NOT implemented in this step (Phase 0 fallback path).",
-  ];
-  const fail = (reason: string, agreeingEndpoints = 0): InclusionResult => ({ ok: false, reason, notes, agreeingEndpoints });
+  const proofMode = args.storageProof ?? "auto";
+  const notes: string[] = [];
+  const fail = (reason: string, agreeingEndpoints = 0, extra: Partial<InclusionResult> = {}): InclusionResult => ({
+    ok: false,
+    reason,
+    notes,
+    agreeingEndpoints,
+    storageProofVerified: false,
+    ...extra,
+  });
 
   if (clients.length === 0) return fail("no RPC endpoints configured");
 
@@ -172,9 +196,51 @@ export async function verifyInclusion(args: VerifyInclusionArgs): Promise<Inclus
     return fail("the log's block hash differs from the quorum block hash", hashRead.agreeing);
   }
 
-  const trust = single
-    ? "Single endpoint: the answer is trusted to one RPC with no cross-check. Storage proof NOT verified."
-    : `Agreement of ${required} of ${clients.length} endpoints on the record, the Disclosed log and the block hash. Not a light client. Storage proof NOT verified.`;
+  // 4. Storage proof of the record against a state root.
+  let proof: StorageProofResult | undefined;
+  if (proofMode !== false) {
+    try {
+      proof = await verifyRecordStorageProof({ publicClients: clients, zeroDropAddress, cidDigest, quorum });
+    } catch (e) {
+      if (!(e instanceof ProofUnsupportedError)) throw e;
+      if (proofMode === true) return fail(`storage proof required but unavailable: ${e.message}`, hashRead.agreeing);
+      notes.push(
+        `Storage proof NOT verified: the endpoints do not serve eth_getProof (${e.message}). ` +
+          "Fell back to the plain reads: record, Disclosed log and block hash agreement.",
+      );
+    }
+  } else {
+    notes.push("Storage proof NOT verified: skipped by the caller (storageProof: false).");
+  }
+  if (proof) {
+    notes.push(...proof.notes);
+    if (!proof.ok) return fail(`storage proof: ${proof.reason}`, hashRead.agreeing, { storageProof: proof });
+    const v = proof.values!;
+    if (
+      v.groupId !== record.groupId ||
+      v.caseId.toLowerCase() !== record.caseId.toLowerCase() ||
+      v.root !== record.root ||
+      v.nullifier !== record.nullifier ||
+      v.blockNumber !== record.blockNumber ||
+      !v.exists
+    ) {
+      return fail("the proven storage differs from what the records() getter returned", hashRead.agreeing, {
+        storageProof: proof,
+      });
+    }
+  }
+
+  const proven = proof?.ok === true;
+  let trust: string;
+  if (proven) {
+    trust = single
+      ? "Single endpoint: the record is proven by storage proof against the state root that one RPC served; that state root is trusted to it, so it is not checked against the canonical chain."
+      : `Agreement of ${required} of ${clients.length} endpoints on the record, the Disclosed log and the block hash; the record is proven by storage proof against the quorum state root. Not a light client.`;
+  } else {
+    trust = single
+      ? "Single endpoint: the answer is trusted to one RPC with no cross-check. Storage proof NOT verified."
+      : `Agreement of ${required} of ${clients.length} endpoints on the record, the Disclosed log and the block hash. Not a light client. Storage proof NOT verified.`;
+  }
   return {
     ok: true,
     reason: `Disclosed record found in block ${record.blockNumber}. ${trust}`,
@@ -187,5 +253,8 @@ export async function verifyInclusion(args: VerifyInclusionArgs): Promise<Inclus
     blockNumber: record.blockNumber,
     blockHash,
     agreeingEndpoints: hashRead.agreeing,
+    storageProofVerified: proven,
+    storageProof: proof,
+    anonymitySet: proof?.values?.anonymitySet,
   };
 }

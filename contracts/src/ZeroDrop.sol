@@ -20,7 +20,8 @@ import {HegotaSupport, Devnet, Scope, TxParam, FrameParam, FrameMode} from "./ve
 ///      - Frame path (EIP-8141, self relay). ZeroDrop is `tx.sender` and payer. The VERIFY frame lands in
 ///        `fallback()` (msg.sender == 0xaa), which checks the transaction shape, reads the `record` arguments out of
 ///        frame 1 and verifies the proof, then `approve(EXECUTION_AND_PAYMENT)`. The SENDER frame then calls
-///        `record` with msg.sender == address(this).
+///        `record` with msg.sender == address(this); `record` does not verify the proof a second time on this path
+///        (see its NatSpec for the invariant that makes that safe).
 ///      - Direct path (dev only). Anyone calls `record` in an ordinary transaction. Controlled by the immutable
 ///        `directRecordEnabled`; the anonymous deployment sets it to false.
 ///
@@ -199,9 +200,42 @@ contract ZeroDrop is HegotaSupport(Devnet.ERC8421_WORKSHOP) {
 
     /// @notice Record a document digest with a Semaphore membership proof.
     /// @dev Callable by `address(this)` (the SENDER frame of a disclosure transaction), or by anyone while
-    ///      `directRecordEnabled`. The proof is verified again here even on the frame path: the VERIFY frame
-    ///      already did, but `record` keeps its own invariants whoever calls it. That costs the SENDER frame a
-    ///      second verification, which is why `DisclosureFrameChecks.MIN_BODY_GAS` covers a full `record()`.
+    ///      `directRecordEnabled`.
+    ///
+    ///      Direct path (msg.sender != address(this)): every precondition is checked here and the proof is
+    ///      verified by the verifier.
+    ///
+    ///      Frame path (msg.sender == address(this)): the proof is NOT verified again. The state checks
+    ///      (`_checkRecord`) still run, they are cheap and keep `record` self-consistent, but the verifier call is
+    ///      skipped, because the VERIFY frame of the same transaction already ran `_checkRecord` and
+    ///      `_verifyProof` on exactly these arguments (see `_verifyDisclosure`). That is safe only because of
+    ///      this invariant:
+    ///
+    ///        INVARIANT: the only way `msg.sender == address(this)` reaches `record` is the SENDER frame of a
+    ///        transaction whose VERIFY frame ran `_verifyDisclosure` to `approve`, and that VERIFY frame read its
+    ///        arguments from this very frame's calldata.
+    ///
+    ///      Why it holds:
+    ///        1. ZeroDrop never calls itself with caller-chosen data. Its outbound calls are: the verifier (a `view`
+    ///           interface, so STATICCALL: it cannot reach a state-changing `record`), the immutable staking
+    ///           registry with the fixed selectors `addStake`/`unlockStake`/`withdrawStake`, and the HegotaSupport
+    ///           opcode helpers (fixed code; `approve` is a delegatecall into the APPROVE helper). There is no
+    ///           generic forwarding, `multicall` or `execute`. Anyone adding such a function MUST re-read this.
+    ///        2. A frame transaction whose `tx.sender` is this contract can run a SENDER frame only after this
+    ///           contract approved it, and it approves only at the end of `_verifyDisclosure`.
+    ///        3. `_verifyDisclosure` requires exactly two frames, frame 1 a SENDER frame to `address(this)` with
+    ///           value 0 and the `record` selector, and decodes the arguments from frame 1's calldata. Frame 1 is the
+    ///           only SENDER frame and it is the call that reaches `record`, so the calldata that was verified is
+    ///           the calldata that executes. State cannot change between the two frames: a VERIFY frame writes
+    ///           nothing, and the SENDER frame follows it in the same transaction.
+    ///        4. Every `record` precondition is enforced by the VERIFY frame for the same arguments: the group
+    ///           exists, `knownRoot`, `rootSize >= minSize`, `cidDigest != 0`, the digest unused, `nullifier != 0`,
+    ///           the nullifier unused for `scopeOf(caseId)` (all in `_checkRecord`, which both paths share), and
+    ///           `verifier.verify(root, nullifier, messageOf(cid, group, case), scopeOf(case), depth, proof)`
+    ///           (in `_verifyProof`, which both paths share).
+    ///
+    ///      The frame path therefore pays for one verification (in the VERIFY frame), not two. If the VERIFY frame
+    ///      is ever changed to skip any of the checks above, this skip must be removed.
     /// @param depth Semaphore Merkle tree depth the proof was generated with.
     /// @param proof ABI-encoded `uint256[8]` Groth16 points, as read by the verifier adapter.
     function record(
@@ -213,10 +247,11 @@ contract ZeroDrop is HegotaSupport(Devnet.ERC8421_WORKSHOP) {
         uint256 depth,
         bytes calldata proof
     ) external {
-        if (msg.sender != address(this) && !directRecordEnabled) revert DirectRecordDisabled();
+        bool selfCall = msg.sender == address(this);
+        if (!selfCall && !directRecordEnabled) revert DirectRecordDisabled();
 
         uint256 scope = _checkRecord(groupId, caseId, cidDigest, root, nullifier);
-        _verifyProof(groupId, caseId, cidDigest, root, nullifier, depth, scope, proof);
+        if (!selfCall) _verifyProof(groupId, caseId, cidDigest, root, nullifier, depth, scope, proof);
 
         nullifierUsed[scope][nullifier] = true;
         records[cidDigest] = Record({

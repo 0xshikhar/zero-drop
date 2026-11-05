@@ -6,9 +6,9 @@
   "verifierLocked": true,
   "stakingRegistry": null,
   "contracts": {
-    "zeroDrop": "0xa85233c63b9ee964add6f2cffe00fd84eb32338f",
-    "verifierAdapter": "0x7a2088a1bfc9d81c55368ae168c2c02570cb814f",
-    "semaphoreVerifier": "0x4a679253410272dd5232b3ff7cf5dbb88f295319"
+    "zeroDrop": "0xf5059a5d33d5853360d16c683c16e67980206f36",
+    "verifierAdapter": "0x998abeb3e57409262ae5b751f60747921b33613e",
+    "semaphoreVerifier": "0x95401dc811bb5740090279ba06cfa8fcf6113778"
   },
-  "deployedBlock": 25
+  "deployedBlock": 38
 }
