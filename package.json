@@ -11,7 +11,8 @@
     "test:core": "pnpm --filter @zerodrop/core test",
     "contracts:deploy": "tsx scripts/deploy.ts",
     "contracts:fixture": "tsx scripts/make-fixture.ts",
-    "abi:export": "tsx scripts/export-abi.ts"
+    "abi:export": "tsx scripts/export-abi.ts",
+    "pinner": "tsx scripts/pinner.ts"
   },
   "packageManager": "pnpm@10.0.0",
   "devDependencies": {
