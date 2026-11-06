@@ -19,6 +19,7 @@ import { networkGate, useBootState, useNetworkPlan } from "../lib/network";
 import { describeEndpoint, effectivePinners, probeHolders, type HolderProbe } from "../lib/pinners";
 import { anonymitySetFor, checkContent, checkInclusion, checkProof, l1Endpoints, type DisclosureReading, type Layer } from "../lib/verify";
 import { cidFromDigest, download, errorMessage, short, sniff } from "../lib/util";
+import { navigate, readerHref } from "../lib/router";
 import { Card, MockMark, Tick, Warn } from "./common";
 
 type Props = { reference: string };
@@ -141,7 +142,7 @@ export function ReaderPage({ reference }: Props) {
 
   function open(event: FormEvent) {
     event.preventDefault();
-    window.location.hash = `#/d/${draft.trim()}`;
+    navigate(readerHref(draft.trim()));
   }
 
   const bundlePicker = (

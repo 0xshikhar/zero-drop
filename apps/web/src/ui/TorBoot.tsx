@@ -1,4 +1,5 @@
 import { retryAnon, useBootState, useNetworkPlan } from "../lib/network";
+import { toHref } from "../lib/router";
 
 /**
  * Network route bar. Shows the plan (why a request goes direct or anonymous) and, when Anon-RPC is the route,
@@ -45,7 +46,7 @@ export function TorBoot() {
         </span>
         <div className="actions tight">
           <button className="secondary small-btn" onClick={retryAnon}>Retry</button>
-          <a className="brass-link small" href="#/settings">Open settings</a>
+          <a className="brass-link small" href={toHref("/settings")}>Open settings</a>
         </div>
       </div>
     );

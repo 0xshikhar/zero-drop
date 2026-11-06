@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { setDeploymentInfo, statusLabels } from "@zerodrop/core";
 import { useDeployment, usePrefs, useSettings } from "../lib/prefs";
 import { useBootState, useNetworkPlan, useTraffic } from "../lib/network";
-import type { Route } from "../lib/router";
+import { toHref, type Route } from "../lib/router";
 import { frameAvailability } from "../lib/post";
 import { TorBoot } from "./TorBoot";
 
@@ -28,14 +28,14 @@ export function Shell({ route, children }: { route: Route; children: ReactNode }
   return (
     <div className="shell">
       <header className="topbar">
-        <a className="wordmark" href="#/home">ZeroDrop<span>/</span>disclosures</a>
+        <a className="wordmark" href={toHref("/drop")}>ZeroDrop<span>/</span>disclosures</a>
         <nav className="nav" aria-label="Main">
-          <NavLink href="#/home" active={route.name === "home"}>Home</NavLink>
-          <NavLink href="#/drop" active={route.name === "drop"}>Post</NavLink>
-          <NavLink href="#/d/" active={route.name === "reader"}>Read</NavLink>
-          <NavLink href="#/groups" active={route.name === "groups"}>Groups</NavLink>
-          <NavLink href="#/settings" active={route.name === "settings"}>Settings</NavLink>
-          <NavLink href="#/about" active={route.name === "about"}>About</NavLink>
+          <NavLink href={toHref("/drop")} active={route.name === "drop"}>Post</NavLink>
+          <NavLink href={toHref("/d/")} active={route.name === "reader"}>Read</NavLink>
+          <NavLink href={toHref("/groups")} active={route.name === "groups"}>Groups</NavLink>
+          <NavLink href={toHref("/settings")} active={route.name === "settings"}>Settings</NavLink>
+          <NavLink href={toHref("/about")} active={route.name === "about"}>About</NavLink>
+          <NavLink href={toHref("/home")} active={route.name === "home"}>Overview</NavLink>
         </nav>
       </header>
 

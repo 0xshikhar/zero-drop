@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { MIN_PASSPHRASE_LENGTH, WrongPassphraseError, commitmentHex } from "@zerodrop/core";
 import { useSession } from "../lib/session";
 import { errorMessage } from "../lib/util";
+import { toHref } from "../lib/router";
 import { Warn } from "./common";
 import { DevDemoButton } from "./DevDemo";
 
@@ -180,7 +181,7 @@ export function EphemeralNotice() {
 export function IdentityHint() {
   const s = useSession();
   if (s.status === "checking") return <p className="muted">Checking for a saved identity…</p>;
-  if (s.status === "locked") return <p className="muted">Your identity is locked. <a className="brass-link" href="#/drop">Unlock it on the Post page</a>.</p>;
-  if (s.status === "legacy") return <p className="muted">An unencrypted identity is stored. <a className="brass-link" href="#/drop">Protect it with a passphrase on the Post page</a>.</p>;
-  return <p className="muted">No identity yet. <a className="brass-link" href="#/drop">Create one on the Post page</a>.</p>;
+  if (s.status === "locked") return <p className="muted">Your identity is locked. <a className="brass-link" href={toHref("/drop")}>Unlock it on the Post page</a>.</p>;
+  if (s.status === "legacy") return <p className="muted">An unencrypted identity is stored. <a className="brass-link" href={toHref("/drop")}>Protect it with a passphrase on the Post page</a>.</p>;
+  return <p className="muted">No identity yet. <a className="brass-link" href={toHref("/drop")}>Create one on the Post page</a>.</p>;
 }
