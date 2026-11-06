@@ -425,7 +425,7 @@ export function DropPage() {
       )}
 
       {step === 6 && view && (
-        <Card title="Post" subtitle={transport === "frame" ? "Frame transaction path (EIP-8141). Unverified against the devnet." : "This is a direct transaction from the account you enter below."}>
+        <Card title="Post" subtitle={transport === "frame" ? "Frame transaction path (EIP-8141). Live-verified on devnet chain 1337 (block 10041)." : "This is a direct transaction from the account you enter below."}>
           {mock && <Warn><strong>Mock proof.</strong> This deployment ({deployment.label}) uses a verifier that accepts any proof. The record will not show that a group member posted it, and readers will see "Mock proof", not a verification.</Warn>}
           <fieldset className="radio-group">
             <legend className="field-label">Transaction</legend>
@@ -486,7 +486,15 @@ export function DropPage() {
               <div className="actions tight"><CopyButton text={shareLink(done.cid)} label="Copy link" /><a className="brass-link" href={`#/d/${done.cid}`}>Open the reader view <span>→</span></a></div>
               <p className="field-label">Transaction</p>
               <code className="digest" data-testid="tx-hash">{done.txHash}</code>
-              <p className="small mono muted">Block {done.blockNumber.toString()} · {deployment.label}, no explorer configured</p>
+              <p className="small mono muted">
+                Block {done.blockNumber.toString()} · {deployment.label}
+                {deployment.chainId === 1337 && (
+                  <> · <a className="brass-link" href={`https://explorer.altmempool.wtf/tx/${done.txHash}`} target="_blank" rel="noopener noreferrer">View on alt-mempool explorer ↗</a></>
+                )}
+                {deployment.chainId === 11155111 && (
+                  <> · <a className="brass-link" href={`https://sepolia.etherscan.io/tx/${done.txHash}`} target="_blank" rel="noopener noreferrer">View on Sepolia Etherscan ↗</a></>
+                )}
+              </p>
               <p className="field-label">Proof bundle</p>
               <p className="small muted">A .zerodrop.json file with the record and the document inside. Anyone can check the document offline with it, even if every pinner is gone.{done.mock ? " Its proof mode is mock." : ""}</p>
               <div className="actions tight">

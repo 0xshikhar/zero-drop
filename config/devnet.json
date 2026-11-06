@@ -1,9 +1,20 @@
 {
   "chainId": 1337,
-  "rpcUrls": [],
-  "sidecarUrls": [],
+  "rpcUrls": [
+    "https://altmempool.forshtat.com"
+  ],
+  "sidecarUrls": [
+    "https://altmempool.forshtat.com/rpc",
+    "https://altmempoolgateway.forshtat.com/rpc"
+  ],
   "contracts": {
-    "zeroDrop": null,
-    "verifier": null
-  }
+    "zeroDrop": "0x419cfe85e77a0a26b9989059057318f59764f7c5",
+    "verifier": "0x0b3a2d73d07ea2d5d0d0fb4db09004f74d92767a"
+  },
+  "blockNumber": 9992,
+  "stakingRegistry": "0xd51c04d7a0b01124e84de152f4e56d9eecb22d2f",
+  "defaultGroup": 1,
+  "defaultRoot": "0x0d36e99bcb4ddc95c38fbe4ebeab148c4dcc38cd253352cbab96e7596d710858",
+  "disclosedFrameTx": "0x3f87e18e0d571b3a6f84f185367342022d7fa8a0ef3f91828dee76e3a9bbc9aa",
+  "disclosedBlock": 10041
 }

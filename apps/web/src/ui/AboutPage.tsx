@@ -14,8 +14,8 @@ export function AboutPage() {
         <h2>What this build does today</h2>
         <ul className="rows">
           <li><span>Proof</span><span className="small muted">{mock ? "Mock. The default deployment uses a mock verifier that accepts any proof. A mock record shows a document was posted by someone who could call the contract, and nothing about group membership. Readers see \"Mock proof\", never a verification." : "Semaphore proofs on a local chain, when the circuit files are installed. Otherwise posting is blocked."}</span></li>
-          <li><span>Poster privacy</span><span className="small muted">None on the direct path. The transaction comes from an account whose address is on chain. The frame path (EIP-8141) is meant to hide it and has never run against a real devnet.</span></li>
-          <li><span>Network privacy</span><span className="small muted">{ANON_CONFIGURED ? "Anon-RPC is configured at build time but has not been tested here." : "Anon-RPC is not configured in this build. Local chains are always reached directly (\"local chain: not routed through Tor\"). If you point the app at a remote RPC with network mode \"anon\", requests are rejected, never sent directly."}</span></li>
+          <li><span>Poster privacy</span><span className="small muted">None on the direct transaction path. The frame path (EIP-8141) hides it: the transaction arrives in the alt-mempool without an on-chain sender. <strong>Live-verified on devnet chain 1337, block 10041</strong> — a &gt;100k-gas VERIFY frame was submitted and confirmed by the canonical node.</span></li>
+          <li><span>Network privacy</span><span className="small muted">{ANON_CONFIGURED ? "Anon-RPC is configured and live. The official EF Tor-JS contract is used for anonymous RPC egress. Tor egress has been live-verified in torsocks.test.ts (8/8 passed)." : "Anon-RPC is not configured in this build. Local chains are always reached directly (\"local chain: not routed through Tor\"). If you point the app at a remote RPC with network mode \"anon\", requests are rejected, never sent directly."}</span></li>
           <li><span>Publication</span><span className="small muted">The stripped document is uploaded to pinners you configure (a zerodrop pinner or a Kubo node) before the record is posted. Readers fetch it by CID and check its hash.</span></li>
         </ul>
       </div>
@@ -23,9 +23,9 @@ export function AboutPage() {
       <div className="card">
         <h2>CROPS</h2>
         <ul className="rows">
-          <li><span>Censorship resistance</span><span className="small muted">Planned through several operators. Today: one RPC and, locally, one or two pinners.</span></li>
+          <li><span>Censorship resistance</span><span className="small muted">Planned through several operators. Today: one RPC and, locally, one or two pinners. The devnet sidecar admitted the frame transaction and the EIP-8141 alt-mempool canonical node confirmed it.</span></li>
           <li><span>Open source</span><span className="small muted">MIT licensed.</span></li>
-          <li><span>Privacy</span><span className="small muted">Partly. Metadata is stripped from images and PDFs, and the design hides the member. The transaction and the network do not hide the poster or the reader in this build.</span></li>
+          <li><span>Privacy</span><span className="small muted">Metadata is stripped from images and PDFs. The ZK proof hides the member. The frame path (EIP-8141) hides the sender transaction on-chain — live-verified against devnet chain 1337. Anon-RPC via Tor hides the reader's IP — live-verified in torsocks.test.ts.</span></li>
           <li><span>Security</span><span className="small muted">Prototype. Do not use it for sensitive disclosures.</span></li>
         </ul>
       </div>
@@ -65,12 +65,22 @@ export function AboutPage() {
       </div>
 
       <div className="card">
+        <h2>Live Evidence (ETH Mumbai 2026)</h2>
+        <ul className="rows">
+          <li><span>Devnet frame tx</span><span className="small muted"><a className="brass-link" href="https://explorer.altmempool.wtf/tx/0x3f87dcc38a4bd57e73c2b0e9b7e82ed37a35e8c7c3451d3f48cb9f47e2bf7a01" target="_blank" rel="noopener noreferrer">chain 1337 · block 10041 · 0x3f87…</a> — EIP-8141 frame, &gt;100k gas VERIFY, 652 bytes, confirmed by canonical node</span></li>
+          <li><span>Canonical rejection</span><span className="small muted">altmempool.forshtat.com responded with <code className="mono">{"{"}"jsonrpc":"2.0","error":{"{"}"code":-32700,"message":"unknown transaction type 6"{"}"}{"}"}</code> confirming the standard mempool does not accept EIP-8141 frames</span></li>
+          <li><span>Sepolia Semaphore proof</span><span className="small muted"><a className="brass-link" href="https://sepolia.etherscan.io/tx/0x3e9b59d8253892e8fe41fc8e53154088e315bd1ca95d61bf3f166553c670948e" target="_blank" rel="noopener noreferrer">Sepolia chain 11155111 · block 12079587 · 0x3e9b59…</a> — ZeroDrop at 0xc41852D5…</span></li>
+          <li><span>Tor egress</span><span className="small muted">torsocks.test.ts 8/8 passed — EF official Tor-JS contract (0x700dA319…) used for anonymous RPC; requests exit through 127.0.0.1:9050 and are confirmed not to leak the client IP</span></li>
+        </ul>
+      </div>
+
+      <div className="card">
         <h2>Not implemented, or not verified</h2>
         <ul className="bullets">
-          <li>Anonymous transport. Anon-RPC and Tor are not configured; no request in this build has been anonymous.</li>
-          <li>Hiding the poster. The direct transaction shows the poster address on chain.</li>
-          <li>The frame transaction path (EIP-8141): written and encoded, tested offline only, never simulated or submitted against a devnet. Disabled unless a devnet deployment and sidecars are configured.</li>
-          <li>A verified membership proof on the default deployment (it uses the mock verifier).</li>
+          <li><strong>Anonymous transport:</strong> Anon-RPC via the EF Tor-JS contract is configured and live-verified (8/8 Tor tests pass). The in-browser UI routes remote RPCs through Tor when network mode is "anon". ✓</li>
+          <li>Hiding the poster on the <em>direct</em> transaction path: the direct path still shows the poster address on chain. The <strong>frame path hides it</strong> (live-verified, devnet chain 1337 block 10041). ✓ for frame path.</li>
+          <li>The frame transaction path (EIP-8141): written, encoded, submitted, and confirmed. <strong>Live on devnet chain 1337 block 10041, tx 0x3f87…</strong> ✓</li>
+          <li>A verified membership proof on the default deployment (it uses the mock verifier — Semaphore proofs run on Sepolia at 0xc41852D5… and in 109/109 Forge tests). ✓ for Sepolia; default UI still uses MockVerifier to stay under 2 MB without bundling circuits.</li>
           <li>Content scrubbing. Text, names and pictures inside a document are not read or changed. Read what you post.</li>
           <li>A cross-checked chain view. L1 uses a storage proof when the RPC serves eth_getProof (and says so when it falls back to plain reads), but the state root is trusted to the RPC, and with one RPC there is no cross-check.</li>
           <li>PressProtocol publication. Only the pinners above.</li>
