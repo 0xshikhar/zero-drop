@@ -25,6 +25,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 export const MAX_UPLOAD_BYTES = 1_048_576;
+export const MAX_LARGE_UPLOAD_BYTES = 104_857_600; // 100 MiB for endowed/Panama-scale leaks
 const CID_PATTERN = /^b[a-z2-7]{58}$/;
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz234567";
 
@@ -120,17 +121,36 @@ export function createPinnerServer(dir: string): Server {
       return send(res, 200, JSON.stringify({ ok: true, pins }), undefined, method === "HEAD");
     }
 
+    if (path === "/storage/quote" && method === "GET") {
+      const urlObj = new URL(req.url ?? "/", "http://127.0.0.1");
+      const bytesNum = Number(urlObj.searchParams.get("bytes") ?? 0);
+      const days = Number(urlObj.searchParams.get("days") ?? 365);
+      const isFreeTier = bytesNum <= MAX_UPLOAD_BYTES;
+      const excessMb = isFreeTier ? 0 : Math.ceil((bytesNum - MAX_UPLOAD_BYTES) / (1024 * 1024));
+      const costWei = BigInt(excessMb) * 100n * BigInt(days * 7200);
+      return json(res, 200, {
+        ok: true,
+        bytes: bytesNum,
+        days,
+        isFreeTier,
+        costWei: costWei.toString(),
+        costEth: (Number(costWei) / 1e18).toFixed(4),
+      });
+    }
+
     const pin = /^\/pin\/([^/]+)$/.exec(path);
     if (pin) {
       if (method !== "PUT") return json(res, 405, { error: "use PUT" });
       const cid = pin[1]!;
       const digest = digestOfCid(cid);
       if (!digest) return json(res, 400, { error: "not a CIDv1 raw sha2-256 base32 lowercase CID" });
+      const isEndowed = req.headers["x-storage-endowment"] === "true" || req.headers["x-panama-scale"] === "true";
+      const uploadLimit = isEndowed ? MAX_LARGE_UPLOAD_BYTES : MAX_UPLOAD_BYTES;
       let body: Buffer;
       try {
-        body = await readBody(req, MAX_UPLOAD_BYTES);
+        body = await readBody(req, uploadLimit);
       } catch (error) {
-        if (error instanceof TooLarge) return json(res, 413, { error: `upload limit is ${MAX_UPLOAD_BYTES} bytes` });
+        if (error instanceof TooLarge) return json(res, 413, { error: `upload limit is ${uploadLimit} bytes` });
         throw error;
       }
       if (body.length === 0) return json(res, 400, { error: "empty body" });

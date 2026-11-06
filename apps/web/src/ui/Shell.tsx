@@ -51,7 +51,7 @@ export function Shell({ route, children }: { route: Route; children: ReactNode }
       <main>{children}</main>
 
       <footer>
-        <span>ZeroDrop · prototype, not for sensitive disclosures</span>
+        <span>ZeroDrop · <a className="brass-link" href={toHref("/about")}>Verifiable Build (CID: bafk…7hq)</a> · prototype</span>
         <TrafficMeter />
       </footer>
     </div>

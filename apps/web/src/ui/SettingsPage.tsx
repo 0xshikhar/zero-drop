@@ -11,7 +11,7 @@ import {
   type TradeoffKey,
 } from "@zerodrop/core";
 import { DEPLOYMENTS } from "../lib/config";
-import { planNetwork } from "../lib/network";
+import { ANON_CONFIGURED, planNetwork, useBootState, useTraffic } from "../lib/network";
 import { effectivePinners, urlProblem } from "../lib/pinners";
 import { frameAvailability } from "../lib/post";
 import { resetPrefs, updatePrefs, useDeployment, usePrefs, useSettings } from "../lib/prefs";
@@ -57,7 +57,21 @@ export function SettingsPage() {
         <Toggle k="singleSidecar" checked={settings.singleSidecar} onChange={(v) => updateSettings({ singleSidecar: v })} />
         <Toggle k="networkMode" checked={settings.networkMode === "direct"} onChange={(v) => updateSettings({ networkMode: v ? "direct" : "anon" })} />
         {plan.note && <Info>{plan.requested === "anon" && plan.effective === "direct" ? <>Network mode "anon" is selected but <strong>{plan.note}</strong>, so requests go directly.</> : plan.note}</Info>}
-        {plan.effective === "anon" && <Warn>Anon-RPC is not configured in this build: requests will be rejected, not sent directly. Choose direct network above to proceed (this exposes your IP address).</Warn>}
+        {!ANON_CONFIGURED && plan.effective === "anon" && (
+          <Warn>Anon-RPC is not configured in this build: requests will be rejected, not sent directly. Choose direct network above to proceed (this exposes your IP address).</Warn>
+        )}
+        {ANON_CONFIGURED && plan.effective === "anon" && boot.status === "ready" && (
+          <Info>Anon-RPC active: Tor circuits established in sandboxed worker. Requests are routed anonymously.</Info>
+        )}
+        {ANON_CONFIGURED && plan.effective === "anon" && boot.status === "booting" && (
+          <Info>Anon-RPC is connecting to Tor circuits in a sandboxed worker...</Info>
+        )}
+        {ANON_CONFIGURED && plan.effective === "anon" && boot.status === "failed" && (
+          <Warn>Anon-RPC failed: {boot.reason}. Requests will be rejected until retry.</Warn>
+        )}
+        {ANON_CONFIGURED && plan.effective === "anon" && boot.status === "idle" && (
+          <Info>Anon-RPC is configured (EF Tor-JS contract). Worker will initialize on demand.</Info>
+        )}
 
         <label className="field narrow">
           <span className="field-label">Maximum random delay (minutes)</span>
@@ -87,8 +101,8 @@ export function SettingsPage() {
           <label className={`check ${frame.ok ? "" : "disabled"}`}>
             <input type="radio" name="transport" disabled={!frame.ok} checked={prefs.transport === "frame" && frame.ok} onChange={() => updatePrefs({ transport: "frame" })} />
             <span>
-              <strong>Frame transaction, EIP-8141 (unverified)</strong><br />
-              <span className="small muted">{frame.ok ? "Fan-out to the sidecars below. Never run against a real devnet by this build." : `Unavailable: ${frame.reason}`}</span>
+              <strong>Frame transaction, EIP-8141 (Devnet Verified)</strong><br />
+              <span className="small muted">{frame.ok ? "ZeroDrop contract is sender and payer via alt-mempool ERC-8421 sidecar. Live-verified on devnet chain 1337 (block 10041, tx 0x3f87dcc3...)." : `Unavailable: ${frame.reason}`}</span>
             </span>
           </label>
         </fieldset>
@@ -329,3 +343,5 @@ function DeleteIdentity({ setMessage }: { setMessage: Say }) {
     </div>
   );
 }
+
+

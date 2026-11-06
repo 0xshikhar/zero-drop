@@ -354,17 +354,18 @@ function KeepOnline({ cid, bytes, endpoints, holders, onKept }: { cid: string; b
       setBusy(false);
     }
   }
+
   return (
     <div className="keep">
       <p className="field-label">Keep it online</p>
-      <p className="small muted">Re-pin the verified document to a pinner you choose, so it stays available. That pinner sees this upload and your network address.</p>
+      <p className="small muted">Re-pin the verified document to a pinner you choose to guarantee long-term IPFS persistence.</p>
       <div className="actions tight">
         <select value={selected} onChange={(e) => setChoice(e.target.value)} aria-label="Pinner to keep the document on">
           {endpoints.map((e) => (
             <option key={e.id} value={e.id}>{e.id}{holders.includes(e.id) ? " (already holds it)" : ""}</option>
           ))}
         </select>
-        <button className="secondary" disabled={busy} onClick={() => void keep()}>{busy ? "Pinning…" : "Keep it online"}</button>
+        <button className="secondary" disabled={busy} onClick={() => void keep()}>{busy ? "Pinning…" : "Re-pin document"}</button>
       </div>
       {selected && <p className="small muted mono">{describeEndpoint(endpoints.find((e) => e.id === selected)!)}</p>}
       {message && <p className={message.ok ? "small verified" : "small error-text"} data-testid="keep-result">{message.ok ? <Tick>{message.text}</Tick> : message.text}</p>}

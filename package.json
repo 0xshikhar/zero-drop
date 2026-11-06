@@ -5,6 +5,10 @@
   "description": "Anonymous, verifiable document disclosures",
   "scripts": {
     "build": "pnpm --filter @zerodrop/web build",
+    "verify:frontend": "tsx scripts/verify-frontend.ts",
+    "deploy:ipfs": "tsx scripts/deploy-ipfs.ts",
+    "worker:build": "tsx workers/zd-quorum/build.ts",
+    "worker:deploy": "tsx workers/zd-quorum/deploy-specifier.ts",
     "dev": "pnpm --filter @zerodrop/web dev",
     "test:contracts": "cd contracts && forge test",
     "build:contracts": "cd contracts && forge build",
@@ -13,6 +17,9 @@
     "contracts:fixture": "tsx scripts/make-fixture.ts",
     "abi:export": "tsx scripts/export-abi.ts",
     "pinner": "tsx scripts/pinner.ts",
+    "backend:up": "bash scripts/backend.sh up",
+    "backend:down": "bash scripts/backend.sh down",
+    "backend:status": "bash scripts/backend.sh status",
     "stack:up": "tsx scripts/stack.ts up",
     "stack:down": "tsx scripts/stack.ts down",
     "stack:status": "tsx scripts/stack.ts status"

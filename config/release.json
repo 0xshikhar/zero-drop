@@ -1,0 +1,26 @@
+{
+  "version": "0.1.0",
+  "name": "zerodrop-web",
+  "buildDate": "2026-11-07T06:38:30Z",
+  "distFile": "apps/web/dist/index.html",
+  "sizeBytes": 1978776,
+  "sha256": "8d316148f06b1a9331db2d2e41fecc301d987e0481b1adb00cd4110c8a584892",
+  "cidRaw": "bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi",
+  "singleFile": true,
+  "externalDependencies": 0,
+  "csp": {
+    "defaultSrc": "'none'",
+    "scriptSrc": "blob: 'wasm-unsafe-eval' sha256-hashes",
+    "trackers": 0,
+    "cdns": 0
+  },
+  "gateways": [
+    "https://ipfs.io/ipfs/bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi",
+    "https://gateway.pinata.cloud/ipfs/bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi",
+    "https://cloudflare-ipfs.com/ipfs/bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi",
+    "https://dweb.link/ipfs/bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi",
+    "http://127.0.0.1:8080/ipfs/bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi"
+  ],
+  "pinnedIpfsCid": "bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi",
+  "deployedAt": "2026-11-07T01:28:08.887Z"
+}

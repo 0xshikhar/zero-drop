@@ -1,0 +1,43 @@
+services:
+  # 1. ZeroDrop Content Pinner (Lightweight, stateless document storage & resolution)
+  pinner:
+    image: node:20-alpine
+    container_name: zerodrop-pinner
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - .:/app
+      - zerodrop_pins:/app/.local/pins
+    environment:
+      - PORT=3001
+      - HOST=0.0.0.0
+    command: sh -c "npm install -g tsx && tsx scripts/pinner.ts --port 3001 --host 0.0.0.0 --dir .local/pins"
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  # 2. Tor SOCKS5 Proxy Daemon (Private Egress for Anon-RPC & PressProtocol)
+  tor:
+    image: osminogin/tor-simple:latest
+    container_name: zerodrop-tor
+    restart: unless-stopped
+    ports:
+      - "9050:9050"
+
+  # 3. Local Anvil Testnet with Pre-funded Accounts
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    container_name: zerodrop-anvil
+    restart: unless-stopped
+    entrypoint: ["anvil"]
+    command: ["--host", "0.0.0.0", "--port", "8545", "--chain-id", "31337"]
+    ports:
+      - "8545:8545"
+
+volumes:
+  zerodrop_pins:
+

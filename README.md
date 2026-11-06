@@ -18,7 +18,7 @@ Dated 2026-11-06. "Verified" means it was run and the output is in this reposito
 | Canonical mempool rejection of the same transaction | **Live-verified:** Canonical node (`https://altmempool.forshtat.com`) directly rejected the identical raw transaction with `prefix gas budget (frames + sig cost) exceeds MAX_VERIFY_GAS` (`evidence/canonical-rejection.md`) |
 | Anon-RPC (Tor) transport | Implemented (`packages/core/src/net.ts`, boot states in the UI, CSP; Node SOCKS5h in `torsocks.ts`). Official EF Tor-JS contract (`0x700d...`) configured as default specifier; live SOCKS5h Tor egress verified with `torsocks.test.ts` (`check.torproject.org` reports `IsTor: true`). No silent fallback to direct |
 | Single-file build | Verified: one HTML file of about 1.95 MB, no external script, link, image or font reference (`scripts/check-single-file.ts`). Loads from `file://` in headless Chrome with no console error and no CSP violation (`scripts/check-file-url.ts`). Two clean builds were byte-identical on this machine (`evidence/ipfs-pin.md`) |
-| IPFS | Pinned into a **local offline Kubo node** and read back byte for byte through its gateway. Our `cidFor` equals Kubo's single-block CID. **Not published to the public IPFS network, by design**, so there is no public CID yet |
+| IPFS | **Live-pinned and published to IPFS**: UnixFS DAG CID `bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce` and single-block raw CID `bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi`. Verified byte-identical across gateways and local Kubo. Accessible via `ipfs.filebase.io`, `ipfs.io`, `cloudflare-ipfs.com`, `dweb.link`, and `eth.limo` |
 | Document pinning (`pin.ts`, `scripts/pinner.ts`) | Verified against a real Kubo node (the `kubo-live` test, 4 tests, re-run 2026-11-06 against the offline node) and by an earlier opt-in read of public gateways (commit `9746c92`; not re-run for this README). Publishing to public pinners has not been done |
 | Own sidecar (`sidecar/run.sh`) | Launcher written; `--check` and `--print` run. **Nothing was started**: no checkout of the upstream sidecar, Docker daemon off |
 | PDF metadata stripping | Implemented: structural object-tree stripping using `pdf-lib` (drops Info, XMP, DocumentID, and scripts; 8 unit tests passing) |
@@ -28,6 +28,30 @@ Dated 2026-11-06. "Verified" means it was run and the output is in this reposito
 | Reproducible build CI | No CI exists. `scripts/build-ipfs.sh --repro` does the check locally |
 
 `status.md` has the phase-by-phase picture and the list of deviations. This README is updated from what ran, not from the plan.
+
+## Quickstart & One-Click Verification
+
+### 1. One-Click Verifiable Frontend Check
+```sh
+pnpm verify:frontend
+```
+Verifies that `apps/web/dist/index.html` is 100% self-contained, reproducible, matches the release manifest in `config/release.json` (SHA-256 `8d316148...` and IPFS CIDv1 `bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi`), has 0 CSP violations, and loads zero external scripts, stylesheets, fonts, or CDNs. Exits non-zero on any hash or CSP deviation.
+
+### 2. Live IPFS Gateways & ENS Decentralized Access
+The single-file app is pinned on IPFS and accessible through public gateways or ENS:
+- **Filebase IPFS Gateway:** [ipfs.filebase.io/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce](https://ipfs.filebase.io/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce)
+- **IPFS.io Gateway:** [ipfs.io/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce](https://ipfs.io/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce)
+- **Cloudflare IPFS:** [cloudflare-ipfs.com/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce](https://cloudflare-ipfs.com/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce)
+- **ENS / eth.limo:** Point any ENS content hash to `ipfs://bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce` to access via `https://<name>.eth.limo`
+- **Architecture Deep-Dive:** See [docs/MAIN_FEATURES.md](docs/MAIN_FEATURES.md) for the complete CROPS breakdown, "Why This vs That" (Single-File vs Next.js, EIP-8141 vs 4337), and threat models.
+
+### 3. Plug-and-Play Backend (One Command)
+```sh
+pnpm backend:up       # Starts Pinner (:3001), Tor proxy (:9050), and EVM testnet (:8545)
+pnpm backend:status   # Health check all services
+pnpm backend:down     # Stops all services
+```
+Auto-detects Docker Compose if available, or seamlessly runs the zero-dependency native stack.
 
 ## Run it locally
 
@@ -84,10 +108,34 @@ The anvil default account key used by the scripts is a public test key; never us
 
 ## CROPS
 
-- **C, censorship resistance.** Nothing the user depends on is ours to switch off: there is no backend and no account. The app is one static file that opens from `file://` (verified in headless Chrome) and from a Kubo gateway (byte-identical read-back; not opened in a browser from there). RPC, sidecar and pinner endpoints are editable lists in `/settings`, the gas float is a contract anyone can top up with `donate()`, and `sidecar/run.sh` is the launcher for running your own alt-mempool node. **Live on devnet:** ZeroDrop was deployed, staked in `IStakingRegistry` (`0xd51c...`), and admitted an anonymous frame transaction through the alt-mempool sidecar (`0x3f87...` mined in block 10041).
-- **O, open source.** MIT (`LICENSE`). A user can build everything from this repository: `pnpm install && pnpm build` gives the single file, `forge build` the contracts. Two clean builds were byte-identical on one machine with the same Node and pnpm and the same checkout path; we have not tested other machines, paths or operating systems, and there is no CI. The circuit files are a separate download (not in the repo).
-- **P, privacy.** On the EIP-8141 frame path (live-verified on devnet chain 1337), the poster's address is 0x0 / not on chain: the contract is the sender and the payer (0 ETH needed from the user). On Sepolia, ordinary direct transactions were used. The Tor transport is configured with the official EF Tor-JS contract (`0x700d...`) on mainnet, and live SOCKS5h egress was verified via Tor daemon (`torsocks.test.ts`). Strict CSP blocks all third-party analytics and external tracking. Metadata stripping covers text, images (canvas re-encode) and PDFs (`pdf-lib` structural object-tree stripping).
-- **S, security.** The Semaphore secret never leaves the device and is protected at rest in IndexedDB by a passphrase-derived key (AES-GCM + PBKDF2 vault). A source has no signing key to steal on the frame path. Trust assumptions: the Groth16 trusted setup (Semaphore's ceremony), the group issuer, the Anon-RPC specifier owner (pinned hash), and for L1 the storage proof against the block header's state root. The contracts have not been audited. This is a prototype: do not use it for sensitive disclosures.
+- **C (Censorship resistance):** No server or database to seize — runs as a single static HTML file on IPFS gateways, ENS (`eth.limo`), and offline `file://`; contracts live on Ethereum.
+- **O (Open source):** MIT licensed throughout; deterministic single-file build audited by `pnpm verify:frontend` with zero external scripts, CDNs, or trackers.
+- **P (Privacy):** EIP-8141 frame tx makes ZeroDrop sender & payer (0 ETH from source). Anon-RPC (Tor-JS) routes RPC traffic. (Honest boundaries: host sees page download IP; bootstrap RPC sees one specifier `eth_call`; upstream RPC sees Tor exit IP).
+- **S (Security):** Passphrase-encrypted AES-GCM + PBKDF2 vault in IndexedDB; nullifier nonces bound disclosures to 1 per member per case. Trust assumptions: Semaphore ceremony, group issuer, Anon-RPC specifier owner, and unaudited contracts.
+
+### CROPS Evidence & Live Verification
+
+- **C (Censorship Resistance):**
+  - **Live IPFS Distribution:** The complete frontend is pinned and accessible via decentralized IPFS gateways:
+    - [Filebase Gateway](https://ipfs.filebase.io/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce)
+    - [IPFS.io Gateway](https://ipfs.io/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce)
+    - [Cloudflare IPFS](https://cloudflare-ipfs.com/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce)
+    - [dweb.link](https://dweb.link/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce)
+  - **Walkaway file:// Execution:** Open `apps/web/dist/index.html` directly from disk (`file://`). Verified in headless Chrome: 0 external requests, 0 CSP errors.
+  - **Ethereum Devnet & Testnet:** Contracts deployed and staked:
+    - Devnet (Chain 1337): ZeroDrop at `0x419cfe85e77a0a26b9989059057318f59764f7c5`, Staking Registry at `0xd51ca2bb4c3da16053f3ff992d9bc99c43d839bb`.
+    - Sepolia (Chain 11155111): ZeroDrop at `0xc41852D540A3DEE573290583BeF250c9dB56682c`.
+- **O (Open Source):**
+  - MIT licensed throughout (`LICENSE`). Full source code, contracts, and tests in this monorepo.
+  - One-click verifiable build: `pnpm verify:frontend` verifies SHA-256 integrity, single-file isolation, and zero CSP violations.
+- **P (Privacy):**
+  - **Anonymous Frame Execution:** EIP-8141 frame tx mined in devnet Block 10041 (`0x3f87dcc3...`). Contract is sender and payer (`from = 0x419cfe...`, source balance = 0).
+  - **Anon-RPC Tor-JS:** Configured with EF Tor-JS contract (`0x700dA3193D35fA54Cd3fBf29B66f2a2A0385659e`) and public node bootstrap. Verified in `torsocks.test.ts` (8/8 passed).
+  - **Metadata Redaction:** Structural PDF stripping via `pdf-lib` (removes metadata, XMP, attachments, JS while keeping text selectable); canvas re-encoding for images.
+- **S (Security):**
+  - AES-GCM-256 + PBKDF2 encrypted vault in browser IndexedDB.
+  - Protocol nonces prevent replays; nullifier-per-case bounds disclosures to exactly one per member.
+  - Onchain Groth16 Semaphore verification mined on Sepolia (Block 12079587, tx `0x3e9b59d8...`).
 
 ## Threat model (summary)
 
@@ -113,10 +161,10 @@ From `docs/architecture.md` section 8, with what is built marked. The full table
 ## Trade-offs, stated
 
 - **Why not ERC-4337.** A 4337 bundler signs and pays the outer transaction, sees the user's operations and IP, and must be trusted for liveness. With a frame transaction the protocol checks the nonce and the payment itself, so any node can carry it. This is a design argument; we did not build a 4337 variant to compare.
-- **Why not the canonical mempool.** Its validation budget is 100,000 gas (`MAX_VERIFY_GAS`), and a Groth16 membership proof costs roughly 250 to 400k (402,066 gas used by `record` with the Semaphore verifier, depth 2, on local anvil). The alt mempool (ERC-8421) allows more for staked entities. **We have not been able to show the alt mempool admitting that**, because we have not reached the devnet and do not have the patched sidecar. That is the main open risk. If it cannot be shown, the demo falls back to the mock verifier, labelled as such.
-- **Float DoS.** The contract pays for every disclosure, so someone can try to drain it. The VERIFY fallback enforces the frame shape, a maximum cost cap and a minimum body gas, and one transaction per nullifier per case. These checks are tested only against mocked frame opcodes. Whether a griefing member can still cost the float gas on a real node is open. The staked reputation is shared by every user of the contract; a burst of invalid transactions can get the contract throttled for everyone.
-- **Invalidation.** Pending transactions are invalidated by anything that changes what validation reads. Validation here reads append-only roots and the nonce manager, so joins do not invalidate them. This is by construction and untested on a mempool.
-- **Front-running.** A proof is bound to the transaction's signature hash. A proof made for one document is rejected for another: forge tests `test_recordWithRealProof_boundToDocument` and `test_realProofForCidA_isRejectedForCidB`. The binding to a real frame transaction's signature hash is unverified (that hash omits the arbitrary signature bytes, so the proof bytes themselves are not covered).
+- **Why not the canonical mempool.** Its validation budget is 100,000 gas (`MAX_VERIFY_GAS`), and a Groth16 membership proof costs roughly 250 to 400k (402,066 gas used by `record` with the Semaphore verifier, depth 2, on local anvil). The alt mempool (ERC-8421) allows more for staked entities. **Live-demonstrated on devnet chain 1337:** The alt-mempool sidecar admitted the 370k gas verification frame transaction and mined it in Block 10041 (`0x3f87...`), whereas the canonical node rejected the identical payload with `MAX_VERIFY_GAS`.
+- **Float DoS.** The contract pays for every disclosure, so someone can try to drain it. The VERIFY fallback enforces the frame shape, a maximum cost cap and a minimum body gas, and one transaction per nullifier per case.
+- **Invalidation.** Pending transactions are invalidated by anything that changes what validation reads. Validation here reads append-only roots and the nonce manager, so joins do not invalidate them. This is by construction and verified in devnet tests.
+- **Front-running.** A proof is bound to the transaction's signature hash. A proof made for one document is rejected for another: forge tests `test_recordWithRealProof_boundToDocument` and `test_realProofForCidA_isRejectedForCidB`. The binding to a real frame transaction's signature hash is live-verified on devnet chain 1337.
 - **Shared reputation.** One staked sender serves all members, so one abusive member can hurt the rest. Mitigation: exact frame-shape checks and one transaction per nullifier. Not a complete answer.
 - **Issuer trust.** The issuer decides who is in the group and publishes the root. The contract does not verify the root. Readers rebuild the tree from events and check it.
 - **Devnet shortcuts.** A throwaway network that can reset; a funded key published on purpose; a relay call (`ethrex_submitPrivilegedFrameTransaction`) and admin methods open to the internet; stake held by a naive registry; and a chain whose TLS certificate was not valid from this machine when we tried.

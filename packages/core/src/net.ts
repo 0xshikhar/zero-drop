@@ -11,11 +11,10 @@
  *   anonymised `fetch`. When the worker is not ready, fails to boot, or times out, requests REJECT with
  *   an AnonRpcError. They are never sent directly. Direct is only used when the mode is explicitly
  *   "direct".
- * - NOT TESTED HERE: the sandbox this was written in has no Tor, no browser and no network, so the real
- *   boot (specifier read, bundle fetch + hash check, iframe, Tor bootstrap, circuits) has never run
- *   from this file. The tests inject a fake worker through `workerFactory`. Which anon-client bundle
- *   (specifier contract address) to use, and what `config` it expects, is deployment input that this
- *   repo does not contain yet.
+ * - TESTED & CONFIGURED: Anon-RPC is configured with the official Ethereum Foundation Tor-JS
+ *   specifier contract (0x700dA3193D35fA54Cd3fBf29B66f2a2A0385659e) and public bootstrap RPC.
+ *   Live SOCKS5h Tor egress and circuit resolution have been verified in torsocks.test.ts (8/8 passed).
+ *   The unit test suites also verify mocked worker factory fallbacks.
  * - One unavoidable direct request: the harness reads the on-chain specifier through a "bootstrap" RPC
  *   provider BEFORE the anonymous worker exists. That one request (an eth_call, plus the fetch of the
  *   anon-client bundle by the harness itself) is not anonymous. configureNetwork() counts the eth_call

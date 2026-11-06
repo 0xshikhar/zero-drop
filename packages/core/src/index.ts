@@ -16,3 +16,4 @@ export * from "./resolve";
 export * from "./bundle";
 export * from "./settings";
 export * from "./storageproof";
+export * from "./storage";

@@ -304,7 +304,7 @@ export function DropPage() {
               </p>
               {overLimit && (
                 <Warn>
-                  <span data-testid="size-warning">The prepared file is {prepared.bytes.byteLength.toLocaleString("en-US")} bytes, over the 1 MiB ({PDF_PIN_LIMIT_BYTES.toLocaleString("en-US")} bytes) limit. Pinners reject it, so it cannot be posted. Reduce its size and choose it again.</span>
+                  This file is {formatBytes(prepared.bytes.byteLength)} (exceeds the 1 MiB pinner limit). Please choose a file under 1 MiB for this deployment.
                 </Warn>
               )}
               <HashCompare before={originalHash} after={digest} />
