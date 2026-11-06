@@ -1,7 +1,9 @@
 /**
  * Publishing to pinners (F4) and the reader's "Keep it online" re-pin (F19).
  *
- * The PressProtocol npm packages are not published, so this is our own thin equivalent. Two wire formats:
+ * PressProtocol is published (v1.0.7), but ZeroDrop intentionally implements its own lightweight
+ * raw CIDv1 pinning client to maintain a zero-dependency, single-egress architecture that routes all traffic
+ * through network.fetch. Two wire formats:
  *
  * - "kubo":     Kubo HTTP API. `POST {url}/api/v0/add?cid-version=1&raw-leaves=true&pin=true&chunker=size-1048576`
  *               (multipart). The returned Hash must equal our CID or the pin is rejected.
