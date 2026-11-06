@@ -12,15 +12,18 @@ const DEFAULT_DESCRIPTION = "Publish documents without publishing who you are.";
 
 /** Document title and meta description per route. Set on every route change. */
 const ROUTE_META: Record<Route["name"], { title: string; description: string }> = {
-  home: {
-    title: "ZeroDrop: leak the document, not yourself",
-    description: "Publish a document that anyone can check came from a group member, without revealing which member. Prototype.",
+  drop: {
+    title: "ZeroDrop: Post a Document",
+    description: "Strip metadata, prove membership in zero-knowledge, and publish a document anonymously on chain. No ETH, no wallet, no relayer.",
   },
-  drop: { title: "Post a document · ZeroDrop", description: DEFAULT_DESCRIPTION },
-  reader: { title: "Read a disclosure · ZeroDrop", description: DEFAULT_DESCRIPTION },
-  groups: { title: "Groups · ZeroDrop", description: DEFAULT_DESCRIPTION },
+  home: {
+    title: "ZeroDrop: Relayerless Anonymous Disclosure Protocol",
+    description: "Publish a document that anyone can verify came from a group member, without revealing which member. EIP-8141 Alt-Mempool + Anon-RPC + Semaphore ZK.",
+  },
+  reader: { title: "Verify a Disclosure · ZeroDrop", description: DEFAULT_DESCRIPTION },
+  groups: { title: "Issuer Groups · ZeroDrop", description: DEFAULT_DESCRIPTION },
   settings: { title: "Settings · ZeroDrop", description: DEFAULT_DESCRIPTION },
-  about: { title: "About · ZeroDrop", description: DEFAULT_DESCRIPTION },
+  about: { title: "About ZeroDrop", description: DEFAULT_DESCRIPTION },
 };
 
 export function App() {

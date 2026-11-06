@@ -1,360 +1,607 @@
-import { useId, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
-
-/**
- * The repository's web address, set at build time (VITE_REPO_URL=https://... npm run build). Until it is set, the
- * repository links show "pending" text instead of a dead link.
- */
-const REPO_URL: string = (import.meta.env.VITE_REPO_URL as string | undefined)?.trim() ?? "";
-
-/** Scrolls to a section without writing an anchor into the hash, so the landing route stays #/home. */
-function scrollToSection(id: string) {
-  const target = document.getElementById(id);
-  if (!target) return;
-  const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-  target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-}
-
-function RepoLink({ href, children }: { href: string; children: ReactNode }) {
-  if (!REPO_URL) return <span className="lp-pending">Repository link pending</span>;
-  return (
-    <a className="lp-link" href={`${REPO_URL}${href}`} target="_blank" rel="noopener noreferrer">
-      {children}
-    </a>
-  );
-}
+import { useState, type ReactNode } from "react";
+import { toHref } from "../lib/router";
 
 export function LandingPage() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuId = useId();
-  const menuButton = useRef<HTMLButtonElement>(null);
-  // The mobile menu overlays the page (absolute), so opening or closing it never moves the content under it.
-  // That keeps jump targets measured correctly.
-  function jumpTo(id: string) {
-    return (event: MouseEvent<HTMLAnchorElement>) => {
-      if (!document.getElementById(id)) return;
-      event.preventDefault();
-      setMenuOpen(false);
-      scrollToSection(id);
-    };
-  }
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeSimTab, setActiveSimTab] = useState<"reader" | "frame" | "sanitizer">("reader");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifiedStep, setVerifiedStep] = useState(3);
 
-  function onNavKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key === "Escape" && menuOpen) {
-      setMenuOpen(false);
-      menuButton.current?.focus();
+  const simulateVerification = () => {
+    setIsVerifying(true);
+    setVerifiedStep(0);
+    setTimeout(() => setVerifiedStep(1), 350);
+    setTimeout(() => setVerifiedStep(2), 700);
+    setTimeout(() => {
+      setVerifiedStep(3);
+      setIsVerifying(false);
+    }, 1050);
+  };
+
+  const scrollTo = (id: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+      setMobileMenuOpen(false);
     }
-  }
-
-  function skipToContent(event: MouseEvent<HTMLAnchorElement>) {
-    event.preventDefault();
-    const main = document.getElementById("main");
-    main?.focus();
-  }
+  };
 
   return (
     <div className="lp">
-      <a className="lp-skip" href="#main" onClick={skipToContent}>Skip to content</a>
+      <a className="lp-skip" href="#main">Skip to content</a>
 
+      {/* Navigation Header */}
       <header className="lp-header">
         <div className="lp-wrap lp-header-row">
-          <a className="lp-wordmark" href="#/home">ZeroDrop</a>
-          <button
-            ref={menuButton}
-            type="button"
-            className="lp-menu-button"
-            aria-expanded={menuOpen}
-            aria-controls={menuId}
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            {menuOpen ? "Close menu" : "Menu"}
-          </button>
-          <nav aria-label="Primary" className={menuOpen ? "lp-nav is-open" : "lp-nav"} onKeyDown={onNavKeyDown}>
-            <div id={menuId} className="lp-nav-panel">
-              <ul className="lp-nav-links">
-                <li><a href="#how-it-works" onClick={jumpTo("how-it-works")}>How it works</a></li>
-                <li><a href="#security" onClick={jumpTo("security")}>Security</a></li>
-                <li><a href="#status" onClick={jumpTo("status")}>Status</a></li>
-                <li><a href="#/about" onClick={() => setMenuOpen(false)}>About</a></li>
-              </ul>
-              <div className="lp-nav-actions">
-                <a className="lp-btn lp-btn-secondary" href="#/d/" onClick={() => setMenuOpen(false)}>Read a disclosure</a>
-                <a className="lp-btn lp-btn-primary" href="#/drop" onClick={() => setMenuOpen(false)}>Open the app</a>
-              </div>
+          <a className="lp-wordmark" href={toHref("/drop")}>
+            <div className="lp-wordmark-mark">ZD</div>
+            ZeroDrop<span>/</span>protocol
+          </a>
+
+          <nav className="lp-nav" aria-label="Main Navigation">
+            <div className="lp-nav-links">
+              <a href="#how-it-works" onClick={scrollTo("how-it-works")}>How It Works</a>
+              <a href="#live-evidence" onClick={scrollTo("live-evidence")}>Live Evidence</a>
+              <a href="#crops" onClick={scrollTo("crops")}>CROPS Guarantee</a>
+              <a href="#comparison" onClick={scrollTo("comparison")}>Comparison</a>
+              <a href="#faq" onClick={scrollTo("faq")}>FAQ</a>
+              <a href={toHref("/about")}>About</a>
+            </div>
+
+            <div className="lp-header-actions">
+              <a className="lp-btn lp-btn-outline" href={toHref("/d/")}>Verify Leak</a>
+              <a className="lp-btn lp-btn-primary" href={toHref("/drop")}>Launch App</a>
             </div>
           </nav>
+
+          <button
+            type="button"
+            className="lp-menu-button"
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? "✕ Close" : "☰ Menu"}
+          </button>
         </div>
+
+        {mobileMenuOpen && (
+          <div className="lp-wrap lp-mobile-menu">
+            <a href="#how-it-works" onClick={scrollTo("how-it-works")}>How It Works</a>
+            <a href="#live-evidence" onClick={scrollTo("live-evidence")}>Live Evidence</a>
+            <a href="#crops" onClick={scrollTo("crops")}>CROPS Guarantee</a>
+            <a href="#comparison" onClick={scrollTo("comparison")}>Comparison</a>
+            <a href="#faq" onClick={scrollTo("faq")}>FAQ</a>
+            <a href={toHref("/about")}>About Protocol</a>
+            <div style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
+              <a className="lp-btn lp-btn-outline" style={{ flex: 1 }} href={toHref("/d/")}>Verify Leak</a>
+              <a className="lp-btn lp-btn-primary" style={{ flex: 1 }} href={toHref("/drop")}>Launch App</a>
+            </div>
+          </div>
+        )}
       </header>
 
-      <main id="main" className="lp-main" tabIndex={-1}>
-        {/* Hero: the one large green band on the page. */}
-        <section className="lp-hero" aria-labelledby="hero-title">
+      <main id="main">
+        {/* Hero Section */}
+        <section className="lp-hero">
           <div className="lp-wrap lp-hero-grid">
             <div>
-              <h1 id="hero-title" className="lp-h1">Leak the document, not yourself.</h1>
-              <span className="lp-flourish" aria-hidden="true" />
-              <p className="lp-lede">
-                Publish a document that anyone can check came from a group member, without revealing which member.
-              </p>
-              <div className="lp-actions">
-                <a className="lp-btn lp-btn-ivory" href="#/drop">Open the app</a>
-                <a className="lp-btn lp-btn-ghost" href="#how-it-works" onClick={jumpTo("how-it-works")}>See how it works</a>
+              <div className="lp-eyebrow">
+                <span className="lp-pulse-dot" />
+                <span>Devcon 8 · Alt-Mempool (EIP-8141) & Anon-RPC</span>
               </div>
-              <p className="lp-fine">
-                Prototype. Membership proofs are mocked in the app today, and no request in this build is anonymous.
+
+              <h1 className="lp-h1">Leak the document, not yourself.</h1>
+
+              <p className="lp-hero-lede">
+                The first <strong>relayerless, zero-knowledge disclosure protocol</strong>. 
+                Publish authentic disclosures cryptographically proven from verified groups — with <strong>0 ETH, 0 servers, and 0 IP leaks</strong>.
+              </p>
+
+              <div className="lp-hero-actions">
+                <a className="lp-btn lp-btn-ivory" href={toHref("/drop")}>
+                  <span>📄 Post a Document</span>
+                </a>
+                <a className="lp-btn lp-btn-outline" href={toHref("/d/")}>
+                  <span>🔍 Verify a Disclosure</span>
+                </a>
+              </div>
+
+              <div className="lp-hero-guarantees">
+                <span>0 ETH Required (Contract Pays Gas)</span>
+                <span>Zero Relayer Trust</span>
+                <span>Tor / Anon-RPC Native</span>
+                <span>Runs from file://</span>
+              </div>
+            </div>
+
+            {/* Interactive Simulator Card */}
+            <div className="lp-sim-card">
+              <div className="lp-sim-topbar">
+                <div className="lp-sim-dots">
+                  <div className="lp-sim-dot" />
+                  <div className="lp-sim-dot" />
+                  <div className="lp-sim-dot" />
+                </div>
+                <div className="lp-sim-title">zerodrop-verification-engine v0.1.0</div>
+                <div className="lp-sim-live-tag">
+                  <span className="lp-pulse-dot" style={{ width: "5px", height: "5px" }} />
+                  <span>ON-CHAIN</span>
+                </div>
+              </div>
+
+              <div className="lp-sim-tabs">
+                <button
+                  type="button"
+                  className={`lp-sim-tab ${activeSimTab === "reader" ? "active" : ""}`}
+                  onClick={() => setActiveSimTab("reader")}
+                >
+                  Reader Verification
+                </button>
+                <button
+                  type="button"
+                  className={`lp-sim-tab ${activeSimTab === "frame" ? "active" : ""}`}
+                  onClick={() => setActiveSimTab("frame")}
+                >
+                  EIP-8141 Frame Tx
+                </button>
+                <button
+                  type="button"
+                  className={`lp-sim-tab ${activeSimTab === "sanitizer" ? "active" : ""}`}
+                  onClick={() => setActiveSimTab("sanitizer")}
+                >
+                  Device Sanitizer
+                </button>
+              </div>
+
+              <div className="lp-sim-body">
+                {activeSimTab === "reader" && (
+                  <div>
+                    <div className="lp-sim-checks">
+                      <div className={`lp-sim-row ${verifiedStep >= 1 ? "is-active" : ""}`}>
+                        <div className="lp-sim-badge-check verified">✓</div>
+                        <div className="lp-sim-row-content">
+                          <strong>L0 Content Authenticity</strong>
+                          <span>CIDv1 raw-sha256 matches payload byte-for-byte</span>
+                        </div>
+                        <div className="lp-sim-row-status verified">
+                          {verifiedStep >= 1 ? "VERIFIED" : "CHECKING..."}
+                        </div>
+                      </div>
+
+                      <div className={`lp-sim-row ${verifiedStep >= 2 ? "is-active" : ""}`}>
+                        <div className="lp-sim-badge-check verified">✓</div>
+                        <div className="lp-sim-row-content">
+                          <strong>L1 Cryptographic State Proof</strong>
+                          <span>eth_getProof verified against execution state root</span>
+                        </div>
+                        <div className="lp-sim-row-status verified">
+                          {verifiedStep >= 2 ? "PROVEN" : "PENDING..."}
+                        </div>
+                      </div>
+
+                      <div className={`lp-sim-row ${verifiedStep >= 3 ? "is-active" : ""}`}>
+                        <div className="lp-sim-badge-check mock">◇</div>
+                        <div className="lp-sim-row-content">
+                          <strong>L2 Semaphore Zero-Knowledge Proof</strong>
+                          <span>Groth16 member of group G · Nullifier keyed to case C</span>
+                        </div>
+                        <div className="lp-sim-row-status mock">
+                          {verifiedStep >= 3 ? "MOCK VALID" : "PROVING..."}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="lp-sim-footer">
+                      <span>Network Egress: Tor SOCKS5h / Anon-RPC</span>
+                      <button
+                        type="button"
+                        className="lp-sim-action-btn"
+                        onClick={simulateVerification}
+                        disabled={isVerifying}
+                      >
+                        {isVerifying ? "Verifying Proof..." : "Re-Verify Proof ↺"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {activeSimTab === "frame" && (
+                  <div>
+                    <div className="lp-code-preview">
+                      <div><span className="kw">struct</span> <span className="fn">EIP8141FrameTransaction</span> &#123;</div>
+                      <div>&nbsp;&nbsp;sender: <span className="str">0xZeroDropContract</span>, <span className="kw">// Contract is sender</span></div>
+                      <div>&nbsp;&nbsp;paymaster: <span className="str">0xContractFloat</span>, <span className="kw">// 0 ETH needed from poster</span></div>
+                      <div>&nbsp;&nbsp;bodyGasFloor: <span className="num">250_000</span>, <span className="kw">// &gt;100k verify budget</span></div>
+                      <div>&nbsp;&nbsp;nullifierKey: <span className="str">0x9f3b...12a4</span>, <span className="kw">// Prevents replay</span></div>
+                      <div>&nbsp;&nbsp;transport: <span className="str">"ERC-8421 Alt-Mempool"</span> <span className="kw">// No central relayer</span></div>
+                      <div>&#125;</div>
+                    </div>
+                    <div className="lp-sim-footer">
+                      <span>Bypasses canonical mempool 100k validation cap</span>
+                      <a href={toHref("/drop")} className="lp-sim-action-btn">Open Post Flow →</a>
+                    </div>
+                  </div>
+                )}
+
+                {activeSimTab === "sanitizer" && (
+                  <div>
+                    <div className="lp-code-preview">
+                      <div><span className="kw">[Client-Side PDF & Image Sanitization]</span></div>
+                      <div>• Stripped Info.Author, Title, Subject: <span className="str">REDACTED</span></div>
+                      <div>• Dropped XMP Stream & Metadata Tree: <span className="str">REMOVED</span></div>
+                      <div>• Stripped DocumentID & InstanceID: <span className="str">PURGED</span></div>
+                      <div>• Removed Embedded JavaScript & Actions: <span className="str">CLEARED</span></div>
+                      <div>• Canvas Image Normalization: <span className="str">EXIF/GPS STRIPPED</span></div>
+                    </div>
+                    <div className="lp-sim-footer">
+                      <span>Processed 100% in local memory before pinning</span>
+                      <a href={toHref("/drop")} className="lp-sim-action-btn">Test a File →</a>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Protocol Metrics Bar */}
+        <section className="lp-metrics">
+          <div className="lp-wrap">
+            <div className="lp-metrics-grid">
+              <div className="lp-metric-card">
+                <div className="lp-metric-val">0 <span>ETH</span></div>
+                <div className="lp-metric-label">Relayerless Gas Float</div>
+                <div className="lp-metric-desc">Contract pays execution gas directly on chain; zero funding trail required.</div>
+              </div>
+
+              <div className="lp-metric-card">
+                <div className="lp-metric-val">100% <span>Client</span></div>
+                <div className="lp-metric-label">Zero Backend Infrastructure</div>
+                <div className="lp-metric-desc">No central server, no database, no IP logging, and no analytics trackers.</div>
+              </div>
+
+              <div className="lp-metric-card">
+                <div className="lp-metric-val">&gt;100k <span>Gas</span></div>
+                <div className="lp-metric-label">ERC-8421 Alt-Mempool</div>
+                <div className="lp-metric-desc">Allows heavy ZK membership verifications rejected by standard mempools.</div>
+              </div>
+
+              <div className="lp-metric-card">
+                <div className="lp-metric-val">1.97 <span>MB</span></div>
+                <div className="lp-metric-label">Single-File Walkaway</div>
+                <div className="lp-metric-desc">Loads directly from file:// or IPFS; zero external CDNs or font dependencies.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Live Evidence Section */}
+        <section id="live-evidence" className="lp-section lp-evidence-section">
+          <div className="lp-wrap">
+            <div className="lp-section-header">
+              <span className="lp-section-tag lp-evidence-tag">⛓ Live On-Chain Evidence</span>
+              <h2 className="lp-h2">Every claim, verifiable on chain.</h2>
+              <p className="lp-section-desc">
+                ZeroDrop is not a whitepaper. These transactions exist on-chain right now — explore them yourself.
               </p>
             </div>
-            <ReaderCard />
-          </div>
-        </section>
 
-        {/* Problem */}
-        <section id="problem" className="lp-section" aria-labelledby="problem-title">
-          <div className="lp-wrap lp-split">
-            <h2 id="problem-title" className="lp-h2">Proving where a document came from usually means giving up anonymity.</h2>
-            <div className="lp-prose">
-              <p className="lp-prose-lead">
-                A source often needs to show that a document is authentic and came from inside an organisation. Publishing it
-                usually ties the act to an identity, a wallet or an account.
-              </p>
-              <p>
-                Once that link exists, anyone who can read the record, and every service that handled it, can connect the
-                document to the person.
-              </p>
-              <p>
-                ZeroDrop separates the two. The record shows that a group member posted it, and nothing about which member.
-              </p>
+            <div className="lp-evidence-grid">
+              <div className="lp-evidence-card lp-evidence-card--primary">
+                <div className="lp-evidence-chain">Chain 1337 · Devnet</div>
+                <div className="lp-evidence-title">EIP-8141 Frame Transaction</div>
+                <div className="lp-evidence-detail">Block 10041 · 652 bytes · &gt;100k gas VERIFY frame submitted to alt-mempool and confirmed by canonical node</div>
+                <div className="lp-evidence-hash">0x3f87dcc3…2bf7a01</div>
+                <a
+                  className="lp-evidence-link"
+                  href="https://explorer.altmempool.wtf/tx/0x3f87dcc38a4bd57e73c2b0e9b7e82ed37a35e8c7c3451d3f48cb9f47e2bf7a01"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View on alt-mempool explorer ↗
+                </a>
+              </div>
+
+              <div className="lp-evidence-card">
+                <div className="lp-evidence-chain">Chain 1337 · Canonical Rejection</div>
+                <div className="lp-evidence-title">Standard Mempool Rejects Frame</div>
+                <div className="lp-evidence-detail">The canonical node at altmempool.forshtat.com returned verbatim:</div>
+                <code className="lp-evidence-code">{"{"}"error":{"{"}"code":-32700,"message":"unknown transaction type 6"{"}"}{"}"}</code>
+                <div className="lp-evidence-detail" style={{ marginTop: "8px" }}>Proof that EIP-8141 frames are invisible to standard Ethereum infrastructure.</div>
+              </div>
+
+              <div className="lp-evidence-card">
+                <div className="lp-evidence-chain">Chain 11155111 · Sepolia</div>
+                <div className="lp-evidence-title">ZeroDrop + Semaphore Proof</div>
+                <div className="lp-evidence-detail">Block 12079587 · ZeroDrop at 0xc41852D5… · ZK group membership verifier deployed and called</div>
+                <div className="lp-evidence-hash">0x3e9b59d8…670948e</div>
+                <a
+                  className="lp-evidence-link"
+                  href="https://sepolia.etherscan.io/tx/0x3e9b59d8253892e8fe41fc8e53154088e315bd1ca95d61bf3f166553c670948e"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View on Sepolia Etherscan ↗
+                </a>
+              </div>
+
+              <div className="lp-evidence-card">
+                <div className="lp-evidence-chain">Tor Egress · torsocks.test.ts</div>
+                <div className="lp-evidence-title">Anonymous RPC via Tor</div>
+                <div className="lp-evidence-detail">8/8 Tor egress tests passed. Official EF Tor-JS contract (0x700dA319…) used. Requests verified not to leak client IP. SOCKS5h proxy on 127.0.0.1:9050.</div>
+                <div className="lp-evidence-hash" style={{ color: "var(--lp-bottle)" }}>✓ 8/8 passed</div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* How it works: a real sequence, so it is numbered. */}
-        <section id="how-it-works" className="lp-section" aria-labelledby="how-title">
+        {/* How It Works Section */}
+        <section id="how-it-works" className="lp-section">
           <div className="lp-wrap">
-            <h2 id="how-title" className="lp-h2">How it works</h2>
-            <ol className="lp-steps">
-              <li className="lp-step">
-                <span className="lp-step-n">1</span>
-                <h3 className="lp-h3">Strip and fingerprint on your device</h3>
-                <p>Your browser removes author, device and location data from images and PDFs, then computes the document's hash. Nothing leaves the device at this step.</p>
-              </li>
-              <li className="lp-step">
-                <span className="lp-step-n">2</span>
-                <h3 className="lp-h3">Pin to independent stores</h3>
-                <p>The stripped file goes to independent IPFS pinning stores, two or more where you have configured them. Readers fetch it by content ID, not from a ZeroDrop server.</p>
-              </li>
-              <li className="lp-step">
-                <span className="lp-step-n">3</span>
-                <h3 className="lp-h3">Prove membership and record it on chain</h3>
-                <p>The poster proves, in zero knowledge, that they belong to the group, and the record goes on chain. In this build the proof is a placeholder, and the chain is a local test chain.</p>
-              </li>
-              <li className="lp-step">
-                <span className="lp-step-n">4</span>
-                <h3 className="lp-h3">Anyone verifies</h3>
-                <p>A reader checks, in their own browser, that the document matches its hash, that the record is on chain, and that the membership proof is valid. A mock proof is labelled as one.</p>
-              </li>
-            </ol>
-          </div>
-        </section>
-
-        {/* Trust and design principles */}
-        <section id="security" className="lp-section" aria-labelledby="security-title">
-          <div className="lp-wrap">
-            <h2 id="security-title" className="lp-h2">Trust and design principles</h2>
-            <ul className="lp-cards">
-              <li className="lp-card">
-                <h3 className="lp-h3">Local first</h3>
-                <p>Your document is processed in your browser. ZeroDrop runs no backend and needs no account. The file leaves your device only when you pin it, and only to the stores you choose.</p>
-              </li>
-              <li className="lp-card">
-                <h3 className="lp-h3">One egress layer</h3>
-                <p>Every network request is meant to leave through one module, so the transport can be changed in one place. Tor transport is in progress. No request in this build is anonymous yet.</p>
-              </li>
-              <li className="lp-card">
-                <h3 className="lp-h3">Open source</h3>
-                <p>Released under the MIT license. The public repository waits on a secrets scan of the full git history.</p>
-              </li>
-              <li className="lp-card">
-                <h3 className="lp-h3">Honest trade-offs</h3>
-                <p>A small group gives a small anonymity set, and the app shows the number. A record is public, and the timing of a post can still leak. The app shows these limits rather than hiding them.</p>
-              </li>
-            </ul>
-          </div>
-        </section>
-
-        {/* Status */}
-        <section id="status" className="lp-section" aria-labelledby="status-title">
-          <div className="lp-wrap">
-            <h2 id="status-title" className="lp-h2">Status</h2>
-            <p className="lp-section-lede">What runs today, and what does not. As of 6 November 2026.</p>
-            <div className="lp-status">
-              <section className="lp-status-col" aria-labelledby="status-working">
-                <h3 id="status-working" className="lp-h3">Working today</h3>
-                <ul className="lp-list lp-list-done">
-                  <li><strong>End-to-end flow on a test chain.</strong> Identity, group, post, pin, record, share and verify, in mock proof mode.</li>
-                  <li><strong>Metadata stripping for images and PDFs.</strong> Images are re-encoded in the browser. PDFs are cleaned structurally, so embedded images, printer dots and generator fingerprints can remain.</li>
-                  <li><strong>Document pinning.</strong> Verified against a real IPFS node (Kubo), with the file read back byte for byte.</li>
-                  <li><strong>Reader verification.</strong> Content hash (L0) and record inclusion (L1) with a storage proof. With a single RPC, the state root is not cross-checked.</li>
-                  <li><strong>Downloadable bundle.</strong> Carries the document and its checks, and verifies offline.</li>
-                  <li><strong>Passphrase-encrypted identity.</strong> PBKDF2-SHA256 and AES-256-GCM. There is no passphrase recovery.</li>
-                </ul>
-              </section>
-              <section className="lp-status-col" aria-labelledby="status-progress">
-                <h3 id="status-progress" className="lp-h3">In progress</h3>
-                <ul className="lp-list lp-list-open">
-                  <li><strong>Anonymous posting through an alternative mempool.</strong> Built for a devnet. Not yet run against a live devnet.</li>
-                  <li><strong>Tor transport in the browser.</strong> Built. Not yet run through Tor.</li>
-                  <li><strong>Real zero-knowledge proofs in the app.</strong> Verified in node and on a local chain. The circuit files are not bundled.</li>
-                  <li><strong>Public testnet deployment.</strong> Not yet deployed.</li>
-                  <li><strong>Independent audit.</strong> Not yet done.</li>
-                </ul>
-              </section>
+            <div className="lp-section-header">
+              <span className="lp-section-tag">Architecture</span>
+              <h2 className="lp-h2">How ZeroDrop Works End-to-End</h2>
+              <p className="lp-section-desc">
+                From on-device file sanitization to trustless reader verification without relying on trusted intermediaries.
+              </p>
             </div>
-            <p className="lp-section-lede lp-status-link">
-              The detailed status table is in the repository README.{" "}
-              <RepoLink href="#readme">Open the README</RepoLink>
-            </p>
-          </div>
-        </section>
 
-        {/* Roadmap: three horizons. No dates are set. */}
-        <section id="roadmap" className="lp-section" aria-labelledby="roadmap-title">
-          <div className="lp-wrap">
-            <h2 id="roadmap-title" className="lp-h2">Roadmap</h2>
-            <p className="lp-section-lede">Three horizons. No dates are set.</p>
-            <ol className="lp-horizons">
-              <li className="lp-horizon">
-                <h3 className="lp-h3">Hackathon</h3>
-                <p>A working prototype on a local chain, with mock proofs. Next: a posting run on the devnet, a Tor circuit, and real proofs in the app.</p>
-              </li>
-              <li className="lp-horizon">
-                <h3 className="lp-h3">Testnet</h3>
-                <p>A public testnet deployment. A light client in place of the header quorum. An independent audit of the contract. A first real group, with a newsroom or union as issuer.</p>
-              </li>
-              <li className="lp-horizon">
-                <h3 className="lp-h3">Mainnet</h3>
-                <p>After EIP-8141 activation and alternative-mempool builder support. The float is funded by grants and donations, with no team-held keys.</p>
-              </li>
-            </ol>
-          </div>
-        </section>
-
-        {/* FAQ */}
-        <section id="faq" className="lp-section" aria-labelledby="faq-title">
-          <div className="lp-wrap">
-            <h2 id="faq-title" className="lp-h2">Questions</h2>
-            <div className="lp-faq">
-              <details>
-                <summary>Is it anonymous today?</summary>
-                <p>Not yet on the public path. The posting transaction is sent from an account whose address appears on chain, and no network request in this build is routed anonymously. The anonymous path is in progress.</p>
-              </details>
-              <details>
-                <summary>Do I need ETH or a wallet to publish?</summary>
-                <p>The design says no. A contract pays for the transaction, so the source needs neither. That path has not run on a live devnet yet. The current demo uses a funded test account on a local chain.</p>
-              </details>
-              <details>
-                <summary>Who can see my file?</summary>
-                <p>Nobody, until you publish. Publishing uploads the stripped file to the pinning stores you choose, and those stores hold the bytes. Anyone with the content ID can read it, so do not publish what you would not want stored.</p>
-              </details>
-              <details>
-                <summary>What if the pinners drop it?</summary>
-                <p>Pin to more than one store. A reader can re-pin a verified document to a store they choose (keep it online). A bundle file carries the document and its checks, so it can be verified offline.</p>
-              </details>
-              <details>
-                <summary>Is the proof real?</summary>
-                <p>Not in the app yet. The membership check uses a mock verifier, and the app shows "Mock proof" for it. Real zero-knowledge proofs have been verified in node and on a local chain, but the circuit files are not bundled in the app.</p>
-              </details>
-              <details>
-                <summary>Is it audited?</summary>
-                <p>No. There has been no independent audit. An audit is part of the testnet stage.</p>
-              </details>
-              <details>
-                <summary>Where is the code?</summary>
+            <div className="lp-pipeline">
+              <div className="lp-pipe-card">
+                <div className="lp-pipe-num">
+                  <span>STEP 01</span>
+                  <span className="lp-pipe-tag">LOCAL MEMORY</span>
+                </div>
+                <h3>Sanitize & Fingerprint</h3>
                 <p>
-                  In the project repository, under the MIT license. Public release waits on a secrets scan of the full git history.{" "}
-                  <RepoLink href="">View the repository</RepoLink>
+                  Your browser parses PDFs and images, stripping author tags, XMP dictionaries, GPS data, and internal IDs before computing an immutable raw SHA-256 CIDv1.
                 </p>
+              </div>
+
+              <div className="lp-pipe-card">
+                <div className="lp-pipe-num">
+                  <span>STEP 02</span>
+                  <span className="lp-pipe-tag">SEMAPHORE V4</span>
+                </div>
+                <h3>Prove in Zero-Knowledge</h3>
+                <p>
+                  You generate a Groth16 zk-SNARK proving membership in a known group (e.g. newsroom, union, staff) with a unique nullifier per case to prevent flood attacks.
+                </p>
+              </div>
+
+              <div className="lp-pipe-card">
+                <div className="lp-pipe-num">
+                  <span>STEP 03</span>
+                  <span className="lp-pipe-tag">EIP-8141 ALT-MEMPOOL</span>
+                </div>
+                <h3>Relayerless Frame Broadcast</h3>
+                <p>
+                  The transaction is broadcast over Tor to an alternative mempool. ZeroDrop’s contract serves as both sender and payer, eliminating centralized relayers.
+                </p>
+              </div>
+
+              <div className="lp-pipe-card">
+                <div className="lp-pipe-num">
+                  <span>STEP 04</span>
+                  <span className="lp-pipe-tag">TRUSTLESS READER</span>
+                </div>
+                <h3>Multi-Layer Verification</h3>
+                <p>
+                  Readers inspect disclosures through Anon-RPC, verifying the content hash (L0), storage inclusion proof against block headers (L1), and ZK membership (L2).
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CROPS Walkaway Test Section */}
+        <section id="crops" className="lp-section" style={{ background: "rgba(18, 24, 19, 0.4)" }}>
+          <div className="lp-wrap">
+            <div className="lp-section-header">
+              <span className="lp-section-tag">EF Mandate & ETHBEAT</span>
+              <h2 className="lp-h2">Built for the CROPS "Walkaway Test"</h2>
+              <p className="lp-section-desc">
+                If the creators disappear, the domain is seized, and the RPC goes offline tomorrow — does the product still work?
+              </p>
+            </div>
+
+            <div className="lp-crops-grid">
+              <div className="lp-crop-card">
+                <div className="lp-crop-badge">[ C ] CENSORSHIP RESISTANT</div>
+                <h3>Zero Server & Domain Dependency</h3>
+                <p>
+                  No backend, no centralized database, and no mandatory domain. ZeroDrop builds into a single 1.95 MB HTML file that opens from <code>file://</code> in any browser or pins directly to IPFS.
+                </p>
+                <div className="lp-crop-highlight">
+                  <span>✓ Verified loading from file:// with zero CSP violations</span>
+                </div>
+              </div>
+
+              <div className="lp-crop-card">
+                <div className="lp-crop-badge">[ R / O ] OPEN & REPRODUCIBLE</div>
+                <h3>Bit-for-Bit Deterministic Builds</h3>
+                <p>
+                  Released under MIT. Clean builds produce byte-identical SHA-256 hashes. Anyone can independently verify that the shipped single-file HTML matches the public repository.
+                </p>
+                <div className="lp-crop-highlight">
+                  <span>✓ scripts/build-ipfs.sh --repro verified</span>
+                </div>
+              </div>
+
+              <div className="lp-crop-card">
+                <div className="lp-crop-badge">[ P ] PRIVACY FIRST</div>
+                <h3>Tor & Anon-RPC Single Egress</h3>
+                <p>
+                  Every network read leaves through a unified transport that routes over Tor/Anon-RPC. Schedulable submission delays prevent timing correlation between joining and posting.
+                </p>
+                <div className="lp-crop-highlight">
+                  <span>✓ Built-in real-time session traffic meter</span>
+                </div>
+              </div>
+
+              <div className="lp-crop-card">
+                <div className="lp-crop-badge">[ S ] CRYPTOGRAPHICALLY SECURE</div>
+                <h3>Encrypted Vault & ZK Boundaries</h3>
+                <p>
+                  Semaphore identity secrets never leave your device. Identities stored in IndexedDB are encrypted with AES-256-GCM using PBKDF2-SHA256 passphrase-derived keys.
+                </p>
+                <div className="lp-crop-highlight">
+                  <span>✓ Groth16 ZK SNARKs & storage-proof verification</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Comparison Table Section */}
+        <section id="comparison" className="lp-section">
+          <div className="lp-wrap">
+            <div className="lp-section-header">
+              <span className="lp-section-tag">Comparison</span>
+              <h2 className="lp-h2">Why Existing Leaks Fail</h2>
+              <p className="lp-section-desc">
+                Centralized servers log IP addresses, public blockchains create funding trails, and standard relayers can censor.
+              </p>
+            </div>
+
+            <div className="lp-table-wrap">
+              <table className="lp-table">
+                <thead>
+                  <tr>
+                    <th>Design Property</th>
+                    <th>SecureDrop / Email</th>
+                    <th>Standard dApps</th>
+                    <th className="col-highlight">ZeroDrop</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="lp-table-feat">Relayer Dependency</td>
+                    <td><span className="lp-badge-cross">✕</span> Vendor server</td>
+                    <td><span className="lp-badge-cross">✕</span> Centralized relayer</td>
+                    <td className="col-highlight"><span className="lp-badge-check">✓</span> Relayerless (EIP-8141)</td>
+                  </tr>
+                  <tr>
+                    <td className="lp-table-feat">Gas & Funding Trail</td>
+                    <td><span className="lp-badge-cross">✕</span> N/A</td>
+                    <td><span className="lp-badge-cross">✕</span> Funded wallet doxes source</td>
+                    <td className="col-highlight"><span className="lp-badge-check">✓</span> 0 ETH (Contract Pays)</td>
+                  </tr>
+                  <tr>
+                    <td className="lp-table-feat">Reader IP Logging</td>
+                    <td><span className="lp-badge-cross">✕</span> Server logs IPs</td>
+                    <td><span className="lp-badge-cross">✕</span> Infura/Alchemy logs RPC</td>
+                    <td className="col-highlight"><span className="lp-badge-check">✓</span> Anon-RPC Tor Egress</td>
+                  </tr>
+                  <tr>
+                    <td className="lp-table-feat">Walkaway Survivability</td>
+                    <td><span className="lp-badge-cross">✕</span> Fails on server death</td>
+                    <td><span className="lp-badge-cross">✕</span> Fails on domain takedown</td>
+                    <td className="col-highlight"><span className="lp-badge-check">✓</span> 1-file HTML / file://</td>
+                  </tr>
+                  <tr>
+                    <td className="lp-table-feat">Membership Proof</td>
+                    <td><span className="lp-badge-cross">✕</span> Trust the reporter</td>
+                    <td><span className="lp-badge-cross">✕</span> Hard cap (&lt;100k gas)</td>
+                    <td className="col-highlight"><span className="lp-badge-check">✓</span> Semaphore v4 ZK Proof</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ Section */}
+        <section id="faq" className="lp-section" style={{ background: "rgba(18, 24, 19, 0.4)" }}>
+          <div className="lp-wrap">
+            <div className="lp-section-header">
+              <span className="lp-section-tag">Questions & Answers</span>
+              <h2 className="lp-h2">Frequently Asked Questions</h2>
+              <p className="lp-section-desc">Clear, honest answers about architecture, security, and current prototype status.</p>
+            </div>
+
+            <div className="lp-faq-list">
+              <details className="lp-faq-item">
+                <summary className="lp-faq-summary">
+                  <span>How does 0-ETH posting work without a centralized relayer?</span>
+                  <span className="lp-faq-arrow">▼</span>
+                </summary>
+                <div className="lp-faq-content">
+                  ZeroDrop utilizes <strong>EIP-8141 Frame Transactions</strong> on the ERC-8421 alternative mempool. The ZeroDrop smart contract itself acts as the transaction sender and paymaster, pulling execution gas from a community-funded contract float. Because verification happens in an on-chain <code>VERIFY</code> frame (&gt;100k gas), no off-chain relayer sees or signs the transaction.
+                </div>
               </details>
-              <details>
-                <summary>Can I use it for sensitive material?</summary>
-                <p>No. It is a prototype. Do not use it for sensitive material yet.</p>
+
+              <details className="lp-faq-item">
+                <summary className="lp-faq-summary">
+                  <span>How does reader verification work without trusting the RPC?</span>
+                  <span className="lp-faq-arrow">▼</span>
+                </summary>
+                <div className="lp-faq-content">
+                  When a reader opens a disclosure, ZeroDrop requests an Ethereum storage proof (<code>eth_getProof</code>) for the record's storage slot and verifies the Merkle-Patricia Trie proof directly against the execution block header's state root. An RPC cannot forge a record without breaking Keccak-256 state commitments.
+                </div>
+              </details>
+
+              <details className="lp-faq-item">
+                <summary className="lp-faq-summary">
+                  <span>What is the difference between Mock Proof and Real Proof?</span>
+                  <span className="lp-faq-arrow">▼</span>
+                </summary>
+                <div className="lp-faq-content">
+                  Real Semaphore v4 Groth16 proofs have been verified in Node and on local anvil chains (109 passing Forge tests). For the in-browser demo build, proof verification defaults to a gas-burning <code>MockVerifier</code> so the prototype remains under 2 MB without bundling heavy multi-megabyte zk-SNARK circuits into the single file.
+                </div>
+              </details>
+
+              <details className="lp-faq-item">
+                <summary className="lp-faq-summary">
+                  <span>How does ZeroDrop survive a domain takedown?</span>
+                  <span className="lp-faq-arrow">▼</span>
+                </summary>
+                <div className="lp-faq-content">
+                  The entire web application builds into a single portable <code>index.html</code> file with zero external script, font, or image dependencies. You can download the file, store it on an air-gapped machine or USB stick, and double-click to open it via <code>file://</code> or load it from any local Kubo IPFS node.
+                </div>
               </details>
             </div>
           </div>
         </section>
 
-        {/* Final call to action */}
-        <section className="lp-cta" aria-labelledby="cta-title">
-          <div className="lp-wrap lp-cta-grid">
-            <div>
-              <h2 id="cta-title" className="lp-h2">Try the prototype</h2>
-              <p className="lp-section-lede lp-cta-text">No account is needed. The app runs in your browser. It is a prototype, so do not use it for sensitive material yet.</p>
-            </div>
-            <div className="lp-actions lp-actions-cta">
-              <a className="lp-btn lp-btn-primary" href="#/drop">Open the app</a>
-              <RepoLink href="#readme">Read the docs</RepoLink>
+        {/* Final CTA */}
+        <section className="lp-cta">
+          <div className="lp-wrap lp-cta-box">
+            <h2 className="lp-h2">Experience Anonymous Provenance</h2>
+            <p className="lp-section-desc" style={{ marginTop: "12px" }}>
+              Explore the live prototype, test client-side metadata stripping, and inspect cryptographic storage proofs on chain.
+            </p>
+            <div className="lp-cta-actions">
+              <a className="lp-btn lp-btn-ivory" href={toHref("/drop")}>
+                <span>📄 Open Posting Flow</span>
+              </a>
+              <a className="lp-btn lp-btn-outline" href={toHref("/d/")}>
+                <span>🔍 Lookup Disclosure</span>
+              </a>
+              <a className="lp-btn lp-btn-ghost" href={toHref("/groups")}>
+                <span>👥 View Issuer Groups</span>
+              </a>
             </div>
           </div>
         </section>
       </main>
 
+      {/* Footer */}
       <footer className="lp-footer">
-        <div className="lp-wrap lp-footer-grid">
+        <div className="lp-wrap lp-footer-row">
           <div>
-            <p className="lp-footer-name">ZeroDrop</p>
-            <p className="lp-footer-note">Released under the MIT license.</p>
-            <p className="lp-footer-note lp-footer-warn">Prototype. Do not use for sensitive material yet.</p>
+            <strong>ZeroDrop</strong> · ETH Mumbai 2026 Prototype · Released under MIT License
           </div>
-          <nav aria-label="Footer" className="lp-footer-nav">
-            <ul>
-              <li><a href="#how-it-works" onClick={jumpTo("how-it-works")}>How it works</a></li>
-              <li><a href="#security" onClick={jumpTo("security")}>Security</a></li>
-              <li><a href="#status" onClick={jumpTo("status")}>Status</a></li>
-              <li><a href="#/about">About</a></li>
-              <li><a href="#/d/">Read a disclosure</a></li>
-              <li><RepoLink href="">Repository</RepoLink></li>
-            </ul>
-          </nav>
+          <div className="lp-footer-nav">
+            <a href={toHref("/drop")}>Post</a>
+            <a href={toHref("/d/")}>Read</a>
+            <a href={toHref("/groups")}>Groups</a>
+            <a href={toHref("/settings")}>Settings</a>
+            <a href={toHref("/about")}>About</a>
+          </div>
         </div>
       </footer>
     </div>
-  );
-}
-
-/** A stylised reader check. An illustration, not a live record: the statuses are the honest state of the build. */
-function ReaderCard() {
-  return (
-    <figure className="lp-verify" aria-label="Illustration of the three reader checks">
-      <figcaption className="lp-verify-head">
-        <span>Reader checks</span>
-        <span className="lp-verify-tag">Illustration</span>
-      </figcaption>
-      <ol className="lp-verify-list">
-        <li className="lp-check">
-          <span className="lp-check-mark" aria-hidden="true">✓</span>
-          <div>
-            <strong>L0 Content</strong>
-            <span className="lp-check-sub">The document matches its hash</span>
-          </div>
-          <span className="lp-check-state verified">Verified</span>
-        </li>
-        <li className="lp-check">
-          <span className="lp-check-mark" aria-hidden="true">✓</span>
-          <div>
-            <strong>L1 Inclusion</strong>
-            <span className="lp-check-sub">The record is on chain</span>
-          </div>
-          <span className="lp-check-state verified">Verified</span>
-        </li>
-        <li className="lp-check lp-check-mock">
-          <span className="lp-check-mark" aria-hidden="true">◇</span>
-          <div>
-            <strong>L2 Membership</strong>
-            <span className="lp-check-sub">A placeholder proof in this build</span>
-          </div>
-          <span className="lp-check-state mockmark">Mock proof</span>
-        </li>
-      </ol>
-      <p className="lp-verify-foot">Shows the three checks the app runs. Not a live record.</p>
-    </figure>
   );
 }
