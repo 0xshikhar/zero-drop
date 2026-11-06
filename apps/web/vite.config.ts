@@ -84,8 +84,19 @@ function rewriteCsp(html: string, { dev, scriptHashes, styleHashes }: Rewrite): 
   if (process.env.ZERODROP_CSP_LOCAL === "0") {
     d.set("connect-src", get("connect-src").filter((s) => ![...LOCAL_SOURCES, ...LOCAL_WS_SOURCES].includes(s)));
   }
+  const defaultConnect = [
+    "https://ethereum-rpc.publicnode.com",
+    "https://cdn.jsdelivr.net",
+    "https://unpkg.com",
+    "https://raw.githubusercontent.com",
+    "https://altmempool.forshtat.com",
+    "https://altmempoolgateway.forshtat.com",
+    "https://ethereum-sepolia-rpc.publicnode.com",
+    "https://gateway.pinata.cloud",
+    "https://cloudflare-ipfs.com",
+  ];
   const extra = (process.env.ZERODROP_CSP_CONNECT ?? "").split(/\s+/).filter(Boolean);
-  if (extra.length) d.set("connect-src", [...get("connect-src"), ...extra]);
+  d.set("connect-src", [...new Set([...get("connect-src"), ...defaultConnect, ...extra])]);
   if (process.env.ZERODROP_CSP_FIREFOX === "1") d.set("script-src", [...get("script-src"), "data:"]);
 
   return html.replace(CSP_META, (_m, open: string, _content: string, close: string) => `${open}${serializePolicy(d)}${close}`);

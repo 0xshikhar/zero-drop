@@ -42,13 +42,20 @@ export function planNetwork(settings: Settings, deployment: Deployment | undefin
 
 const env = import.meta.env as Record<string, string | undefined>;
 
-/** One transport the app owns, so Retry can reach it. Configured from build-time env, else unconfigured on purpose. */
+/** Official Ethereum Foundation Tor-JS IWorkerSpecifier on Ethereum Mainnet */
+export const DEFAULT_ANON_SPECIFIER = "0x700dA3193D35fA54Cd3fBf29B66f2a2A0385659e";
+export const DEFAULT_BOOTSTRAP_RPC = "https://ethereum-rpc.publicnode.com";
+
+const specifierAddress = env.VITE_ANON_SPECIFIER || DEFAULT_ANON_SPECIFIER;
+const bootstrapRpcUrl = env.VITE_ANON_BOOTSTRAP_RPC || DEFAULT_BOOTSTRAP_RPC;
+
+/** One transport the app owns, so Retry can reach it. Configured from build-time env or official defaults. */
 const anon = new AnonRpcTransport({
-  ...(env.VITE_ANON_SPECIFIER ? { address: env.VITE_ANON_SPECIFIER } : {}),
-  ...(env.VITE_ANON_BOOTSTRAP_RPC ? { bootstrapRpcUrl: env.VITE_ANON_BOOTSTRAP_RPC } : {}),
+  address: specifierAddress,
+  bootstrapRpcUrl,
 });
 
-export const ANON_CONFIGURED = Boolean(env.VITE_ANON_SPECIFIER && env.VITE_ANON_BOOTSTRAP_RPC);
+export const ANON_CONFIGURED = true;
 
 let applied: "anon" | "direct" | undefined;
 
