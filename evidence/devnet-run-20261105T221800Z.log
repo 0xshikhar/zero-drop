@@ -1,0 +1,29 @@
+== 1. devnet reachability (TLS verified)
+checked at 2026-11-05T22:18:00.833Z (this machine's clock), expected chain 1337
+
+execution RPC (ethrex)
+  https://altmempool.forshtat.com
+  TLS: certificate is NOT YET VALID (verification failed; no request was sent)
+       certificate notBefore: 2026-11-06T05:31:33.000Z  (Nov  6 05:31:33 2026 GMT)
+       certificate notAfter:  2027-02-04T05:31:32.000Z
+       this machine's clock:  2026-11-05T22:18:00.833Z
+       the certificate becomes valid in 7.2 h by this machine's clock (do not work around it with -k / NODE_TLS_REJECT_UNAUTHORIZED=0)
+
+sidecar /rpc (primary)
+  https://altmempool.forshtat.com/rpc
+  TLS: certificate is NOT YET VALID (verification failed; no request was sent)
+       certificate notBefore: 2026-11-06T05:31:33.000Z  (Nov  6 05:31:33 2026 GMT)
+       certificate notAfter:  2027-02-04T05:31:32.000Z
+       this machine's clock:  2026-11-05T22:18:00.833Z
+       the certificate becomes valid in 7.2 h by this machine's clock (do not work around it with -k / NODE_TLS_REJECT_UNAUTHORIZED=0)
+
+sidecar gateway [informational]
+  https://altmempoolgateway.forshtat.com/rpc
+  TLS: certificate is NOT YET VALID (verification failed; no request was sent)
+       certificate notBefore: 2026-11-06T05:33:56.000Z  (Nov  6 05:33:56 2026 GMT)
+       certificate notAfter:  2027-02-04T05:33:55.000Z
+       this machine's clock:  2026-11-05T22:18:00.833Z
+       the certificate becomes valid in 7.3 h by this machine's clock (do not work around it with -k / NODE_TLS_REJECT_UNAUTHORIZED=0)
+
+NOT REACHABLE: see the lines above
+devnet not reachable: stopping (no request was sent with TLS disabled)

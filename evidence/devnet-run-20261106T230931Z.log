@@ -1,0 +1,253 @@
+== 1. devnet reachability (TLS verified)
+checked at 2026-11-06T23:09:31.864Z (this machine's clock), expected chain 1337
+
+execution RPC (ethrex)
+  https://altmempool.forshtat.com
+  OK  eth_chainId = 0x539 (1337)
+  extra: {"blockNumber":9990,"stakingRegistryHasCode":true,"stakingRegistry":"0xd51c04d7a0b01124e84de152f4e56d9eecb22d2f"}
+
+sidecar /rpc (primary)
+  https://altmempool.forshtat.com/rpc
+  OK  eth_chainId = 0x539 (1337)
+  extra: {"skandhaConfig":{"chainId":1337,"flags":{"testingMode":false,"redirectRpc":true},"entryPoints":["0x00000000000000000000000000000000000000aa"],"beneficiary":"","relayers":["0x5544596212F91984C986A919C8026DF0576816f9"],"minInclusionDenominator":10,"throttlingSlack":10,"banSlack":50,"minStake":"10000000000000000","minUnstakeDelay":0,"minSignerBalance":"0.1 eth","multicall":"0xcA11bde05977b3631167028862bE2a173976CA11","estimationStaticBuffer":35000,"validationGasLimit":10000000,"receiptLookupRange":1024,"etherscanApiKey":false,"conditionalTransactions":false,"rpcEndpointSubmit":true,"rpcEndpointSubmitMethod":"eth_sendBundle","gasPriceMarkup":0,"enforceGasPrice":false,"enforceGasPriceThreshold":1000,"eip1559":true,"eip2930":false,"useropsTTL":300,"whitelistedEntities":{"paymaster":[],"account":[],"factory":[],"external":[]},"bundleGasLimitMarkup":25000,"maxConcurrentSubmissions":10,"bundleInterval":10000,"pollingInterval":3000,"maxSubmitAttempts":3,"bundleSize":4,"standardMempoolId":"QmcFZKUX9qoo3StwVycJTAhwdiqbEjcwNvQVK246p3z1rk","canonicalEntryPoint":"0x00000000000000000000000000000000000000aa","supportedMempools":[{"mempoolId":"QmcFZKUX9qoo3StwVycJTAhwdiqbEjcwNvQVK246p3z1rk","entryPoint":"0x00000000000000000000000000000000000000aa"}],"gasFeeInSimulation":false,"skipBundleValidation":false,"pvgMarkup":0,"cglMarkup":0,"vglMarkup":0,"paymasterVglMarkup":0,"paymasterPoglMarkup":0,"estimationGasLimit":0,"archiveDuration":86400,"pvgMarkupPercent":0,"cglMarkupPercent":0,"vglMarkupPercent":0,"paymasterVglMarkupPercent":0,"paymasterPoglMarkupPercent":0,"userOpGasLimit":25000000,"bundleGasLimit":25000000,"blockscoutUrl":"","blockscoutApiKeys":0,"tenderlyApiUrl":false,"tenderlyKey":false,"tenderlySave":true,"rpcTimeout":"10s","disableWatchContract":false,"epSimulationsContract":"","pimlicoSimulationsContract":"","binarySearchMaxRetries":3,"precompiles":["0x0000000000000000000000000000000000000001","0x0000000000000000000000000000000000000002","0x0000000000000000000000000000000000000003","0x0000000000000000000000000000000000000004","0x0000000000000000000000000000000000000005","0x0000000000000000000000000000000000000006","0x0000000000000000000000000000000000000007","0x0000000000000000000000000000000000000008","0x0000000000000000000000000000000000000009","0x000000000000000000000000000000000000000a","0x000000000000000000000000000000000000000b","0x000000000000000000000000000000000000000c","0x000000000000000000000000000000000000000d","0x000000000000000000000000000000000000000e","0x000000000000000000000000000000000000000f","0x0000000000000000000000000000000000000010","0x0000000000000000000000000000000000000011","0x0000000000000000000000000000000000000100"],"relayOpsWithWhitelistedEntities":false,"stakingRegistryAddress":"0xd51c04d7a0b01124e84de152f4e56d9eecb22d2f"}}
+
+sidecar gateway [informational]
+  https://altmempoolgateway.forshtat.com/rpc
+  OK  eth_chainId = 0x539 (1337)
+
+REACHABLE: execution RPC and primary sidecar answered with chain 1337
+== 2+3. deploy ZeroDrop (mock verifier, direct path off, stake and float) and run the gas spike
+chain 1337 via https://altmempool.forshtat.com, deployer 0x1B4AcaBA13f8B3B858c0796A7d62FC35A5ED3BA5
+ZeroDrop at 0x419cfe85e77a0a26b9989059057318f59764f7c5 (block 9992)
+MockVerifier at 0x0b3a2d73d07ea2d5d0d0fb4db09004f74d92767a (block 9993)
+setVerifier ok (block 9994)
+createGroup ok (block 9995)
+addMembers ok (block 9996)
+donate ok (block 9997)
+stake ok (block 9998)
+ZeroDrop float 88000000000000000 wei
+--- transaction
+sender/target   0x419cfe85e77a0a26b9989059057318f59764f7c5
+chainId         1337
+nonce key/seq   43613548358308961326664694148743090385877585312612181527991264298632260760 / 0
+frames          [0] VERIFY exec 450000   [1] SENDER exec 800000 state 200000, data 516 bytes
+maxFeePerGas    1200000009 wei, gas limits sum 1450000, cost bound 1740000013050000 wei (cap 10000000000000000)
+verify layout   ok (selector, groupId@4, root@100, nullifier@132, proof offset 0xe0, 256 proof bytes)
+txHash          0xedec4e80e96481712da09ec13fa7b869c099fedcab8721b162e4fd0796004475
+sigHash         0xedec4e80e96481712da09ec13fa7b869c099fedcab8721b162e4fd0796004475
+raw (652 bytes)  0x06f90288820539e09f18af346b11bd3cf8c5d801332b2df849c374c37b6f26ad9642424a907cac988094419cfe85e77a0a26b9989059057318f59764f7c5f90237cb010380c58306ddd0808080f90228028094419cfe85e77a0a26b9989059057318f59764f7c5c8830c350083030d4080b90204a5af67b800000000000000000000000000000000000000000000000000000000000000013d63f584eb0ce375790963770e80188321e5920285e5e27610cd6d9c5f087822f79dd03abcb7327a2f7ccb43a2273ce8dd255c06fe9b12b9d27321159bfea26f0d36e99bcb4ddc95c38fbe4ebeab148c4dcc38cd253352cbab96e7596d7108580018af346b11bd3cf8c5d801332b2df849c374c37b6f26ad9642424a907cac98000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c5c480808080cb8447868c098447868c0980c0c0
+--- ethrex_simulateFrameTransaction
+{
+  "canonicalMempoolValid": false,
+  "canonicalMempoolViolation": "prefix gas budget exceeded: 450100 > 100000 (MAX_VERIFY_GAS)",
+  "erc7562TraceError": null,
+  "executionError": null,
+  "executionStatus": "reverted",
+  "frames": [
+    {
+      "gasUsed": "0x5a570",
+      "succeeded": true
+    },
+    {
+      "gasUsed": "0xc3500",
+      "succeeded": false
+    }
+  ],
+  "gasUsed": "0x121dee",
+  "maxCost": "0x64160bd8f27fe",
+  "payer": "0x419cfe85e77a0a26b9989059057318f59764f7c5",
+  "prefixShape": "SelfVerify"
+}
+--- eth_sendFrameTransaction
+[
+  {
+    "url": "https://altmempool.forshtat.com/rpc",
+    "ok": true,
+    "result": "0xedec4e80e96481712da09ec13fa7b869c099fedcab8721b162e4fd0796004475"
+  }
+]
+--- skandha_frameTransactionStatus
+2026-11-06T23:10:23.569Z {
+  "tx": {
+    "chainId": "0x539",
+    "nonceKeys": [
+      "0x18af346b11bd3cf8c5d801332b2df849c374c37b6f26ad9642424a907cac98"
+    ],
+    "nonceSeq": "0x0",
+    "sender": "0x419cFe85e77a0A26B9989059057318F59764F7C5",
+    "frames": [
+      {
+        "mode": "0x1",
+        "flags": "0x3",
+        "target": null,
+        "limits": {
+          "execution": "0x6ddd0",
+          "state": "0x0"
+        },
+        "value": "0x0",
+        "data": "0x"
+      },
+      {
+        "mode": "0x2",
+        "flags": "0x0",
+        "target": "0x419cFe85e77a0A26B9989059057318F59764F7C5",
+        "limits": {
+          "execution": "0xc3500",
+          "state": "0x30d40"
+        },
+        "value": "0x0",
+        "data": "0xa5af67b800000000000000000000000000000000000000000000000000000000000000013d63f584eb0ce375790963770e80188321e5920285e5e27610cd6d9c5f087822f79dd03abcb7327a2f7ccb43a2273ce8dd255c06fe9b12b9d27321159bfea26f0d36e99bcb4ddc95c38fbe4ebeab148c4dcc38cd253352cbab96e7596d7108580018af346b11bd3cf8c5d801332b2df849c374c37b6f26ad9642424a907cac98000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ],
+    "signatures": [
+      {
+        "scheme": "0x0",
+        "signer": "0x",
+        "msg": "0x",
+        "signature": "0x"
+      }
+    ],
+    "fees": {
+      "maxPriorityFeePerGas": "0x47868c09",
+      "maxFeePerGas": "0x47868c09",
+      "maxFeePerBlobGas": "0x0"
+    },
+    "blobVersionedHashes": [],
+    "recentRootReferences": []
+  },
+  "sender": "0x419cFe85e77a0A26B9989059057318F59764F7C5",
+  "payer": "0x419cFe85e77a0A26B9989059057318F59764F7C5",
+  "status": "New"
+}
+2026-11-06T23:10:27.420Z {
+  "tx": {
+    "chainId": "0x539",
+    "nonceKeys": [
+      "0x18af346b11bd3cf8c5d801332b2df849c374c37b6f26ad9642424a907cac98"
+    ],
+    "nonceSeq": "0x0",
+    "sender": "0x419cFe85e77a0A26B9989059057318F59764F7C5",
+    "frames": [
+      {
+        "mode": "0x1",
+        "flags": "0x3",
+        "target": null,
+        "limits": {
+          "execution": "0x6ddd0",
+          "state": "0x0"
+        },
+        "value": "0x0",
+        "data": "0x"
+      },
+      {
+        "mode": "0x2",
+        "flags": "0x0",
+        "target": "0x419cFe85e77a0A26B9989059057318F59764F7C5",
+        "limits": {
+          "execution": "0xc3500",
+          "state": "0x30d40"
+        },
+        "value": "0x0",
+        "data": "0xa5af67b800000000000000000000000000000000000000000000000000000000000000013d63f584eb0ce375790963770e80188321e5920285e5e27610cd6d9c5f087822f79dd03abcb7327a2f7ccb43a2273ce8dd255c06fe9b12b9d27321159bfea26f0d36e99bcb4ddc95c38fbe4ebeab148c4dcc38cd253352cbab96e7596d7108580018af346b11bd3cf8c5d801332b2df849c374c37b6f26ad9642424a907cac98000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ],
+    "signatures": [
+      {
+        "scheme": "0x0",
+        "signer": "0x",
+        "msg": "0x",
+        "signature": "0x"
+      }
+    ],
+    "fees": {
+      "maxPriorityFeePerGas": "0x47868c09",
+      "maxFeePerGas": "0x47868c09",
+      "maxFeePerBlobGas": "0x0"
+    },
+    "blobVersionedHashes": [],
+    "recentRootReferences": []
+  },
+  "sender": "0x419cFe85e77a0A26B9989059057318F59764F7C5",
+  "payer": "0x419cFe85e77a0A26B9989059057318F59764F7C5",
+  "status": "Submitted",
+  "transaction": "0xedec4e80e96481712da09ec13fa7b869c099fedcab8721b162e4fd0796004475"
+}
+2026-11-06T23:10:33.145Z {
+  "tx": {
+    "chainId": "0x539",
+    "nonceKeys": [
+      "0x18af346b11bd3cf8c5d801332b2df849c374c37b6f26ad9642424a907cac98"
+    ],
+    "nonceSeq": "0x0",
+    "sender": "0x419cFe85e77a0A26B9989059057318F59764F7C5",
+    "frames": [
+      {
+        "mode": "0x1",
+        "flags": "0x3",
+        "target": null,
+        "limits": {
+          "execution": "0x6ddd0",
+          "state": "0x0"
+        },
+        "value": "0x0",
+        "data": "0x"
+      },
+      {
+        "mode": "0x2",
+        "flags": "0x0",
+        "target": "0x419cFe85e77a0A26B9989059057318F59764F7C5",
+        "limits": {
+          "execution": "0xc3500",
+          "state": "0x30d40"
+        },
+        "value": "0x0",
+        "data": "0xa5af67b800000000000000000000000000000000000000000000000000000000000000013d63f584eb0ce375790963770e80188321e5920285e5e27610cd6d9c5f087822f79dd03abcb7327a2f7ccb43a2273ce8dd255c06fe9b12b9d27321159bfea26f0d36e99bcb4ddc95c38fbe4ebeab148c4dcc38cd253352cbab96e7596d7108580018af346b11bd3cf8c5d801332b2df849c374c37b6f26ad9642424a907cac98000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ],
+    "signatures": [
+      {
+        "scheme": "0x0",
+        "signer": "0x",
+        "msg": "0x",
+        "signature": "0x"
+      }
+    ],
+    "fees": {
+      "maxPriorityFeePerGas": "0x47868c09",
+      "maxFeePerGas": "0x47868c09",
+      "maxFeePerBlobGas": "0x0"
+    },
+    "blobVersionedHashes": [],
+    "recentRootReferences": []
+  },
+  "sender": "0x419cFe85e77a0A26B9989059057318F59764F7C5",
+  "payer": "0x419cFe85e77a0A26B9989059057318F59764F7C5",
+  "status": "Reverted",
+  "reason": "frame(s) 1 (reverted) did not succeed",
+  "transaction": "0xedec4e80e96481712da09ec13fa7b869c099fedcab8721b162e4fd0796004475"
+}
+--- eth_getFrameTransactionReceipt
+{
+  "cumulativeGasUsed": "0x121dee",
+  "payer": "0x419cfe85e77a0a26b9989059057318f59764f7c5",
+  "blockNumber": "0x2710",
+  "status": "reverted",
+  "frameReceipts": [
+    {
+      "status": "success",
+      "gasUsed": {
+        "execution": "0x5a570",
+        "state": "0x0"
+      },
+      "logs": []
+    },
+    {
+      "status": "reverted",
+      "gasUsed": {
+        "execution": "0xc3500",
+        "state": "0x0"
+      },
+      "logs": []
+    }
+  ]
+}

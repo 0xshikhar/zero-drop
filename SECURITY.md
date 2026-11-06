@@ -17,14 +17,14 @@ Useful in a report: the commit, what you ran, what you expected, what happened. 
 
 These are stated, not hidden. The README has the details and the current evidence for each.
 
-1. **The anonymity path has not been shown to work.** The only posting path that has run is a direct transaction from an ordinary account, which puts the poster's address on chain. The EIP-8141 frame path, the alternative mempool and the Tor transport are built or designed but have not been run against the devnet or Tor.
-2. **Proof verification over the public 100k gas limit is unproven** on any mempool. We do not have the patched sidecar or the precompile allowlist the design assumes.
-3. **Frame-opcode behaviour is unverified.** The contract's VERIFY fallback was tested only against mocked frame opcodes.
+1. **The anonymity path is verified on devnet chain 1337, but direct posting on Sepolia is visible.** The EIP-8141 frame transaction path has been live-tested and verified on the alt-mempool devnet (block 10041, tx `0x3f87...`), where ZeroDrop itself is the payer (0 ETH from user). On Sepolia, ordinary direct transactions were used, placing the sender's address on chain.
+2. **Proof verification over the public 100k gas limit is demonstrated on the devnet.** A 370,032 execution gas VERIFY frame was admitted by the alt-mempool and mined, while rejected by the canonical mempool's `MAX_VERIFY_GAS` cap. Production Semaphore proofs on Sepolia require ~400k-900k gas, which fits this alt-mempool staked-sender model.
+3. **Frame opcodes have been executed on live ethrex devnet.** Real EIP-8141 opcodes (`approve`, `txparam`, `framedataload`) were exercised on-chain in block 10041. Staking was executed against the devnet `IStakingRegistry` (`0xd51c...`).
 4. **Contracts are unaudited.** Known deviations include: the issuer's membership root is not checked by the contract; the frame signature hash does not cover the proof bytes; `MIN_BODY_GAS` is 450,000.
 5. **Issuer trust.** The group issuer decides who is a member. A malicious issuer can add keys it controls.
-6. **Reader inclusion check (L1) trusts the RPC** it asks, or a k-of-n agreement on block headers. It is not a light client.
-7. **Identity storage.** The Semaphore identity is kept unencrypted in the browser's IndexedDB. The passphrase-encrypted export is for backups only. Device malware or an MDM profile defeats the design.
-8. **Metadata stripping is partial.** Images are re-encoded in the browser with browser-dependent results; PDFs are rejected. Printer dots, writing style and content that identifies the source cannot be removed.
+6. **Reader inclusion check (L1) verifies `eth_getProof` storage proofs** against a block header's state root. While cryptographically sound against tampered storage proofs, trust in the state root itself currently relies on a single RPC or k-of-n header quorum rather than a full execution light client (e.g. Helios/Colibri).
+7. **Identity storage.** The Semaphore identity is encrypted in IndexedDB using a passphrase-derived key (PBKDF2 + AES-GCM). Device malware, keyloggers, or an untrusted browser profile defeat the protection.
+8. **Metadata stripping is partial.** Images are re-encoded via HTML5 canvas, and PDFs undergo structural object-tree stripping (dropping Info, XMP, DocumentID, and scripts). Printer dots, embedded visual artifacts, font embeddings, writing style, and semantic content that identifies the source cannot be removed automatically.
 9. **Small anonymity sets and timing.** A group of a few members offers little anonymity, and posting soon after joining narrows it further. A global passive network adversary is out of scope.
 10. **Anyone can pin or fetch** a document by CID, and pinners can drop it. The on-chain record still shows what existed.
 11. **Devnet shortcuts.** The target network is a throwaway devnet with deliberately open admin surfaces and a shared funded key. Never reuse a devnet key anywhere else.

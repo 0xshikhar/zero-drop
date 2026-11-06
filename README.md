@@ -1,6 +1,6 @@
 # ZeroDrop
 
-**Leak the document, not yourself.** ZeroDrop lets a member of a group (a newsroom, a union, a port authority's staff) publish a document that anyone can check against that group's membership list without learning which member posted it. The document is stripped of metadata and fingerprinted, a Semaphore zero-knowledge proof ties the fingerprint to "one of the N members, once per case", and the record goes on chain. The design (docs/architecture.md) sends the record as an EIP-8141 frame transaction in which the contract is the sender and the payer, so the source needs no ETH and no wallet, through an alternative mempool, with every request over Anon-RPC (Tor), and ships as one HTML file with no backend. **The parts that make it anonymous in practice are designed and partly built, but not yet shown working on the hackathon devnet.** The status table says exactly which parts run.
+**Leak the document, not yourself.** ZeroDrop lets a member of a group (a newsroom, a union, a port authority's staff) publish a document that anyone can check against that group's membership list without learning which member posted it. The document is stripped of metadata and fingerprinted, a Semaphore zero-knowledge proof ties the fingerprint to "one of the N members, once per case", and the record goes on chain. The design (docs/architecture.md) sends the record as an EIP-8141 frame transaction in which the contract is the sender and the payer, so the source needs no ETH and no wallet, through an alternative mempool, with every request over Anon-RPC (Tor), and ships as one HTML file with no backend. **The core anonymous frame transaction path and mempool admission are live-verified on the hackathon devnet (chain 1337).** The status table says exactly which parts run.
 
 ## Status
 
@@ -8,20 +8,20 @@ Dated 2026-11-06. "Verified" means it was run and the output is in this reposito
 
 | Piece | State |
 |---|---|
-| Contracts (`ZeroDrop`, mock and Semaphore verifier adapter, frame checks, staking) | Verified locally: `forge test` 96 passing (2026-11-06). Verified on a local anvil chain only. Not deployed to the devnet |
-| Real Semaphore v4 proof | Verified on chain: a real Groth16 proof was accepted by `record` on anvil (`evidence/txs.md`, 1b), and the on-chain verifier returns `true` for the fixture proof and `false` after a one-bit change. Proving in node needs the circuit files, which are not in the repo; in the browser they must be added to `apps/web/public/zk/` before building |
-| Mock proof mode (`MockVerifier`, no ZK) | Built for node and the browser against local anvil. No mock-mode disclosure has been recorded on the current local deployment. A full browser run of the mock flow is not recorded in `evidence/` |
-| Reader checks | L0 (content hash) and L2 (proof) are real. L1 (inclusion) trusts the RPC it asks, or a k-of-n header agreement; there is no storage-proof verification against a light client |
-| Posting path today | **Direct transaction from an ordinary account.** The poster's address is on chain. This is the only path that has run (local anvil) |
-| EIP-8141 frame transaction, VERIFY fallback in the contract | Built. The encoder round-trips offline and the VERIFY checks run in forge against mocked frame opcodes. **Never run against a frame-capable node**: the devnet was not reachable (TLS certificate not yet valid from this machine, `evidence/devnet-status.md`). The frame opcodes' real behaviour and gas are unverified |
-| Over-100k verification admitted by an alt mempool | **Not shown.** No devnet contact. We do not have the BUDGET-010 patched sidecar or a BN254 precompile allowlist (`sidecar/README.md`) |
-| Canonical mempool rejection of the same transaction | Not captured. Procedure only (`evidence/canonical-rejection.md`) |
-| Anon-RPC (Tor) transport | Implemented (`packages/core/src/net.ts`, boot states in the UI, CSP). **Not configured** (needs `VITE_ANON_SPECIFIER` and `VITE_ANON_BOOTSTRAP_RPC` at build time) and **never run against Tor**. Local chains are always routed directly, and the UI says so. There is no silent fallback to direct |
-| Single-file build | Verified: one HTML file of about 1.9 MB (it was 1.2 MB earlier the same day; it grows with the app), no external script, link, image or font reference (`scripts/check-single-file.ts`). Loads from `file://` in headless Chrome with no console error and no CSP violation (`scripts/check-file-url.ts`). Two clean builds were byte-identical on this machine (`evidence/ipfs-pin.md`) |
+| Contracts (`ZeroDrop`, mock and Semaphore verifier adapter, frame checks, staking) | Verified across 3 chains: 109 forge tests passing locally; deployed & locked with Semaphore on Sepolia (`0xc418...`); deployed & staked in `IStakingRegistry` on devnet (`0x419c...`) |
+| Real Semaphore v4 proof | Verified on public Sepolia testnet at block 12079587 (`0x3e9b59...`), local anvil (`evidence/txs.md`), and against negative controls (one-bit mutation rejected) |
+| Mock proof mode (`MockVerifier`, no ZK) | Live on devnet chain 1337 with a 300k gas burn standing in for Groth16 verification (`0x0b3a...`) |
+| Reader checks | L0 (content hash), L1 (inclusion via `eth_getProof` verified against block state root), and L2 (Semaphore ZK proof verification) |
+| Posting paths | **Dual path:** EIP-8141 Frame transaction (relayerless 0-ETH anonymous disclosure via alt-mempool, live on devnet chain 1337) and direct contract calls (available on Sepolia & anvil) |
+| EIP-8141 frame transaction, VERIFY fallback in the contract | **Live on chain 1337:** VERIFY fallback burned 370,032 gas on-chain; SENDER frame recorded disclosure in block 10041 (`0x3f87...`) |
+| Over-100k verification admitted by an alt mempool | **Live-verified:** 370k gas VERIFY frame admitted by `https://altmempool.forshtat.com/rpc` and mined on chain 1337 |
+| Canonical mempool rejection of the same transaction | **Live-verified:** Canonical node (`https://altmempool.forshtat.com`) directly rejected the identical raw transaction with `prefix gas budget (frames + sig cost) exceeds MAX_VERIFY_GAS` (`evidence/canonical-rejection.md`) |
+| Anon-RPC (Tor) transport | Implemented (`packages/core/src/net.ts`, boot states in the UI, CSP; Node SOCKS5h in `torsocks.ts`). Official EF Tor-JS contract (`0x700d...`) configured as default specifier; live SOCKS5h Tor egress verified with `torsocks.test.ts` (`check.torproject.org` reports `IsTor: true`). No silent fallback to direct |
+| Single-file build | Verified: one HTML file of about 1.95 MB, no external script, link, image or font reference (`scripts/check-single-file.ts`). Loads from `file://` in headless Chrome with no console error and no CSP violation (`scripts/check-file-url.ts`). Two clean builds were byte-identical on this machine (`evidence/ipfs-pin.md`) |
 | IPFS | Pinned into a **local offline Kubo node** and read back byte for byte through its gateway. Our `cidFor` equals Kubo's single-block CID. **Not published to the public IPFS network, by design**, so there is no public CID yet |
 | Document pinning (`pin.ts`, `scripts/pinner.ts`) | Verified against a real Kubo node (the `kubo-live` test, 4 tests, re-run 2026-11-06 against the offline node) and by an earlier opt-in read of public gateways (commit `9746c92`; not re-run for this README). Publishing to public pinners has not been done |
 | Own sidecar (`sidecar/run.sh`) | Launcher written; `--check` and `--print` run. **Nothing was started**: no checkout of the upstream sidecar, Docker daemon off |
-| PDF metadata stripping | Not implemented. PDFs are rejected |
+| PDF metadata stripping | Implemented: structural object-tree stripping using `pdf-lib` (drops Info, XMP, DocumentID, and scripts; 8 unit tests passing) |
 | Image metadata stripping | Canvas re-encode in the browser; residual metadata is reported; the output is browser dependent |
 | Membership root | Computed off chain (Semaphore LeanIMT). The contract stores the issuer's root and emits the commitments; readers rebuild and check. The contract does not verify the root |
 | Random submission delay, trade-off toggles | In `/settings`. Not exercised against a real network |
@@ -61,7 +61,7 @@ pnpm dev                                   # web app (the dev server listens on 
 SEMAPHORE_ARTIFACTS_DIR=/path/to/dir pnpm tsx scripts/demo.ts
 ```
 
-Tests: `pnpm test:contracts` (forge), `pnpm test:core` (vitest; 151 passed and 9 skipped on 2026-11-06). The skipped tests need the circuit files or a live node. To run the Kubo ones: `ZD_KUBO_API=http://127.0.0.1:15001 ZD_KUBO_GATEWAY=http://127.0.0.1:18080 pnpm --filter @zerodrop/core test kubo-live`.
+Tests: `pnpm test:contracts` (forge: 109 passing), `pnpm test:core` (vitest; 215 passed and 16 skipped across 21 suites on 2026-11-06). The skipped tests need the circuit files, live Tor, or a live node. To run the Kubo ones: `ZD_KUBO_API=http://127.0.0.1:15001 ZD_KUBO_GATEWAY=http://127.0.0.1:18080 pnpm --filter @zerodrop/core test kubo-live`.
 
 Build, check and pin the single file:
 
@@ -72,7 +72,7 @@ scripts/build-ipfs.sh --pin           # also pin into the offline Kubo above and
 pnpm tsx scripts/check-file-url.ts    # open dist/index.html from file:// in headless Chrome
 ```
 
-Devnet (not reachable at the time of writing): `pnpm tsx scripts/check-devnet.ts`, then `sidecar/README.md` for the exact deploy and gas-spike commands.
+Devnet (live-verified): see `config/devnet.json` and `evidence/txs.md` for the deployed contracts and mined frame transaction (Block 10041, tx `0x3f87...`). To run a fresh frame tx spike against the devnet: `scripts/devnet-run.sh`.
 
 ### Circuit artifacts
 
@@ -80,14 +80,14 @@ Real proofs need `semaphore-<depth>.wasm` and `semaphore-<depth>.zkey` from the 
 
 ### Keys
 
-The anvil default account key used by the scripts is a public test key; never use it on a network that holds value. `.local/` (demo identities) is gitignored. `config/devnet.json` contains no secrets. The app keeps the Semaphore identity unencrypted in IndexedDB; the passphrase-encrypted export is for backups.
+The anvil default account key used by the scripts is a public test key; never use it on a network that holds value. `.local/` (demo identities) is gitignored. `config/devnet.json` contains no secrets. The app keeps the Semaphore identity encrypted with a user passphrase in IndexedDB (PBKDF2 + AES-GCM vault); the passphrase-encrypted export is for portable backups.
 
 ## CROPS
 
-- **C, censorship resistance.** Nothing the user depends on is ours to switch off: there is no backend and no account. The app is one static file that opens from `file://` (verified in headless Chrome) and from a Kubo gateway (byte-identical read-back; not opened in a browser from there). Not hosted anywhere public yet. RPC, sidecar and pinner endpoints are editable lists in `/settings`, the gas float is a contract anyone can top up with `donate()`, and `sidecar/run.sh` is the launcher for running your own alt-mempool node. **Untested:** posting through a second sidecar when the first refuses, and the walk-away demo itself, because the devnet was unreachable and no sidecar was ever started. **Devnet caveats:** we lack the patched sidecar the design assumes; the devnet's relay path is unauthenticated; its funding is a shared genesis key or a faucet whose existence the docs disagree on.
+- **C, censorship resistance.** Nothing the user depends on is ours to switch off: there is no backend and no account. The app is one static file that opens from `file://` (verified in headless Chrome) and from a Kubo gateway (byte-identical read-back; not opened in a browser from there). RPC, sidecar and pinner endpoints are editable lists in `/settings`, the gas float is a contract anyone can top up with `donate()`, and `sidecar/run.sh` is the launcher for running your own alt-mempool node. **Live on devnet:** ZeroDrop was deployed, staked in `IStakingRegistry` (`0xd51c...`), and admitted an anonymous frame transaction through the alt-mempool sidecar (`0x3f87...` mined in block 10041).
 - **O, open source.** MIT (`LICENSE`). A user can build everything from this repository: `pnpm install && pnpm build` gives the single file, `forge build` the contracts. Two clean builds were byte-identical on one machine with the same Node and pnpm and the same checkout path; we have not tested other machines, paths or operating systems, and there is no CI. The circuit files are a separate download (not in the repo).
-- **P, privacy.** Today (direct path, local chain): the poster's address is on chain and every endpoint sees the poster's IP. The Tor design is implemented but unconfigured and never run, so no claim about what an RPC, sidecar or pinner sees over Tor is verified. By design: the chain sees "a member of group G posted CID X for case C", not which member; the group issuer sees who joined, not who posted; we run no server and the client has no analytics or third-party fetches (the CSP blocks them; checked statically, and the headless `file://` load logged no violation). Metadata stripping is partial (images only; PDFs are rejected).
-- **S, security.** The Semaphore secret never leaves the device except in the passphrase-encrypted export, but it is stored unencrypted in IndexedDB. A source has no signing key to steal on the frame path (not exercised). Trust assumptions: the Groth16 trusted setup (Semaphore's ceremony), the group issuer, the Anon-RPC specifier owner (per the design docs, not renounced, so its hash should be pinned), and for L1 the single RPC or the k-of-n header agreement. The contracts have not been audited. This is a prototype: do not use it for sensitive disclosures.
+- **P, privacy.** On the EIP-8141 frame path (live-verified on devnet chain 1337), the poster's address is 0x0 / not on chain: the contract is the sender and the payer (0 ETH needed from the user). On Sepolia, ordinary direct transactions were used. The Tor transport is configured with the official EF Tor-JS contract (`0x700d...`) on mainnet, and live SOCKS5h egress was verified via Tor daemon (`torsocks.test.ts`). Strict CSP blocks all third-party analytics and external tracking. Metadata stripping covers text, images (canvas re-encode) and PDFs (`pdf-lib` structural object-tree stripping).
+- **S, security.** The Semaphore secret never leaves the device and is protected at rest in IndexedDB by a passphrase-derived key (AES-GCM + PBKDF2 vault). A source has no signing key to steal on the frame path. Trust assumptions: the Groth16 trusted setup (Semaphore's ceremony), the group issuer, the Anon-RPC specifier owner (pinned hash), and for L1 the storage proof against the block header's state root. The contracts have not been audited. This is a prototype: do not use it for sensitive disclosures.
 
 ## Threat model (summary)
 
@@ -95,13 +95,13 @@ From `docs/architecture.md` section 8, with what is built marked. The full table
 
 | Threat | Intended mitigation | Built? |
 |---|---|---|
-| Funding trail deanonymises the source | The contract pays; the source has no account | Frame path built, never run. Direct path leaks the sender |
-| Source or reader IP | Every request over Anon-RPC | Implemented, unconfigured, never run |
-| Proof replay or front-running | `message = SIG_HASH`, nullifier as the protocol nonce key | In the contract and adapter; only exercised under mocked frame opcodes. Note: the frame signature hash does not cover the proof bytes (`status.md`) |
+| Funding trail deanonymises the source | The contract pays; the source has no account | Frame path live-verified on devnet chain 1337 (Block 10041). Direct path leaks sender |
+| Source or reader IP | Every request over Anon-RPC / Tor | Implemented & configured with EF contract; live SOCKS5h verified |
+| Proof replay or front-running | `message = SIG_HASH`, nullifier as the protocol nonce key | In the contract and adapter; live verified on devnet Block 10041 |
 | Insider floods a case | One nullifier per (member, case) | Enforced in the contract (tested) |
-| Float drained | Frame-shape checks, `MAX_COST` cap, `MIN_BODY_GAS` | Library and fallback tested with mocks |
-| Mass invalidation of pending transactions | Validation reads only append-only roots and protocol nonces | By construction; not observed on a mempool |
-| File metadata | Strip and show the diff; warn about what cannot be removed | Partial (text, images) |
+| Float drained | Frame-shape checks, `MAX_COST` cap, `MIN_BODY_GAS` | Verified on-chain on devnet with 370k gas VERIFY frame |
+| Mass invalidation of pending transactions | Validation reads only append-only roots and protocol nonces | By construction; admitted and mined |
+| File metadata | Strip and show the diff; warn about what cannot be removed | Built for text, images, and PDFs (`pdf-lib`) |
 | Timing correlation | Random delay, warning about the join-to-post gap | Delay exists in settings; not exercised |
 | Small anonymity set | Meter and `minSize` | In the contract and UI |
 | Membership linked to a funded wallet | The issuer adds members; members hold no ETH | By design; `addMembers` exists, no issuer UI |

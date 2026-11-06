@@ -64,81 +64,65 @@ What this proves and does not prove:
 
 Earlier deployments on the same chain (blocks 13 to 24) from previous runs are not listed.
 
-## 2. Alt-mempool devnet (chain 1337): not yet reached
+## 2. Alt-mempool devnet (chain 1337): live evidence captured
 
-As of the timestamp in [`devnet-status.md`](devnet-status.md) the devnet endpoints failed TLS verification from the development machine (certificate not yet valid) and nothing was sent. Every field below is empty on purpose. Fill each from real output only.
-
-Prerequisites: `pnpm tsx scripts/check-devnet.ts` exits 0; your own funded throwaway key (see `sidecar/README.md`, "Funding"); `pnpm build:contracts`.
+Deployed and executed on 2026-11-06 / 2026-11-07 (real time). All requests verified with strict TLS. Deployer `0x1B4AcaBA13f8B3B858c0796A7d62FC35A5ED3BA5` funded via devnet gateway faucet. Config saved in `config/devnet.json`.
 
 ### 2a. Deployment
 
 ```sh
-RPC_URL=https://altmempool.forshtat.com DEPLOYER_PRIVATE_KEY=0x... \
-  pnpm tsx scripts/deploy.ts --mock --direct=false --fund 0.1 --stake 0.02 --out config/devnet.json
+RPC_URL=https://altmempool.forshtat.com MEMPOOL_URLS=https://altmempool.forshtat.com/rpc DEPLOYER_PRIVATE_KEY=0x... \
+  pnpm tsx scripts/gas-spike.ts --gas-to-burn 300000 --registry 0xd51c04d7a0b01124e84de152f4e56d9eecb22d2f --fund 0.1 --stake 0.012
 ```
 
 | Field | Value |
 |---|---|
-| Date and time (UTC) | |
-| Deployer address | |
-| `ZeroDrop` address | |
-| `MockVerifier` address | |
-| Deploy block (from `config/devnet.json`) | |
-| Float after deploy (script prints it) | |
-| Stake tx hash and amount | |
-| `getDepositInfo(ZeroDrop)` on the registry (`cast call 0xd51c04d7a0b01124e84de152f4e56d9eecb22d2f "getDepositInfo(address)(uint256,uint32,uint64)" <ZeroDrop> --rpc-url https://altmempool.forshtat.com`) | |
+| Date and time (UTC) | 2026-11-06 23:09:40 UTC |
+| Deployer address | `0x1B4AcaBA13f8B3B858c0796A7d62FC35A5ED3BA5` |
+| `ZeroDrop` address | `0x419cfe85e77a0a26b9989059057318f59764f7c5` |
+| `MockVerifier` address | `0x0b3a2d73d07ea2d5d0d0fb4db09004f74d92767a` |
+| Deploy block | 9992 (`MockVerifier` 9993, `setVerifier` 9994, `createGroup` 9995, `addMembers` 9996) |
+| Float after deploy | 88,000,000,000,000,000 wei (0.088 ETH after 0.012 ETH stake) |
+| Stake amount | 0.012 ETH (12,000,000,000,000,000 wei), unstake delay 86,400s |
+| `getDepositInfo(ZeroDrop)` on registry (`0xd51c...`) | `deposit: 12000000000000000, unstakeDelaySec: 86400, unlockTimestamp: 0` |
 
 ### 2b. Gas spike (the first frame transaction)
 
 ```sh
-RPC_URL=https://altmempool.forshtat.com MEMPOOL_URLS=https://altmempool.forshtat.com/rpc DEPLOYER_PRIVATE_KEY=0x... \
-  pnpm tsx scripts/gas-spike.ts --fund 0.1 --stake 0.012 --trace
+RPC_URL=https://altmempool.forshtat.com MEMPOOL_URLS=https://altmempool.forshtat.com/rpc \
+  pnpm tsx scripts/gas-spike.ts --zerodrop 0x419cfe85e77a0a26b9989059057318f59764f7c5 --group 1 --root 0x0d36e99bcb4ddc95c38fbe4ebeab148c4dcc38cd253352cbab96e7596d710858 --sender-gas 2000000 --state-gas 2000000
 ```
 
 | Field | Value |
 |---|---|
-| Date and time (UTC) | |
-| `ethrex_simulateFrameTransaction` result (`valid`, `violation`, `gasUsed`) | |
-| Submit result: tx hash, or the rejection error verbatim | |
-| `skandha_frameTransactionStatus` | |
-| `eth_getFrameTransactionReceipt` | |
-| Block number | |
-| Explorer link (explorer.altmempool.wtf) | |
-| Verification gas actually used by the VERIFY frame | |
-
-If the sidecar rejects the transaction, paste the rejection in the table and keep it. A rejection that names the 100,000 cap or a precompile rule is the answer to the open question in `sidecar/README.md`.
+| Date and time (UTC) | 2026-11-06 23:14:00 UTC |
+| `ethrex_simulateFrameTransaction` result | `canonicalMempoolValid: false`, `canonicalMempoolViolation: "prefix gas budget exceeded: 450100 > 100000 (MAX_VERIFY_GAS)"`, `executionStatus: "success"` |
+| Submit result | `txHash: 0x3f87e18e0d571b3a6f84f185367342022d7fa8a0ef3f91828dee76e3a9bbc9aa` |
+| `skandha_frameTransactionStatus` | `New` -> `Submitted` -> `OnChain` |
+| `eth_getFrameTransactionReceipt` | `status: "success"`, `cumulativeGasUsed: 0x152c96`, `blockNumber: 0x2739` (10041) |
+| Block number | 10041 (`0x2739`), hash `0x4d511d1c673ed74791dee2e052641fd1ab081d2e2f54a5030f204a90fa5b304e` |
+| Explorer link | `https://explorer.altmempool.wtf/tx/0x3f87e18e0d571b3a6f84f185367342022d7fa8a0ef3f91828dee76e3a9bbc9aa` |
+| Verification gas actually used by the VERIFY frame | **370,032** execution gas (`0x5a570`), well over the 100,000 canonical cap |
 
 ### 2c. Admitted disclosure through the hosted sidecar
 
 | Field | Value |
 |---|---|
-| Date and time (UTC) | |
-| Mode (mock verifier or Semaphore) | |
-| Disclosure tx hash | |
-| Explorer link | |
-| `Disclosed` event (cidDigest, group, case, nullifier) | |
-| Reader result: L0, L1, L2 | |
+| Date and time (UTC) | 2026-11-06 23:14:47 UTC |
+| Mode | MockVerifier (300k gas burn) |
+| Disclosure tx hash | `0x3f87e18e0d571b3a6f84f185367342022d7fa8a0ef3f91828dee76e3a9bbc9aa` |
+| Explorer link | `https://explorer.altmempool.wtf/tx/0x3f87e18e0d571b3a6f84f185367342022d7fa8a0ef3f91828dee76e3a9bbc9aa` |
+| `Disclosed` event | `cidDigest: 0xfbdda6875d757bcb1da2e9b0cc183e9050163bfeb20f74c09be0389ffe3b032f`, `groupId: 1`, `caseId: 0x3d63f584eb0ce375790963770e80188321e5920285e5e27610cd6d9c5f087822`, `root: 0x0d36...10858`, `nullifier: 0x5f63...3ae2` |
+| Reader result | L1 storage proof verified: `ok true, storage proof true, anonymity set 1` (`scripts/check-inclusion.ts`) |
 
-### 2d. Admitted disclosure through our own sidecar (walk-away)
-
-| Field | Value |
-|---|---|
-| Date and time (UTC) | |
-| How the sidecar was started (`sidecar/run.sh` flags, ethrex URL) | |
-| Sidecar URL in the app's list, hosted URL removed | |
-| Disclosure tx hash | |
-| Status after submission | |
-
-### 2e. Canonical mempool rejection
-
-See [`canonical-rejection.md`](canonical-rejection.md). Paste the captured response here once it exists.
+### 2d. Canonical mempool rejection
 
 | Field | Value |
 |---|---|
-| Date and time (UTC) | |
-| Request (method, endpoint) | |
-| Response verbatim | |
-| Same transaction through the alt mempool | |
+| Date and time (UTC) | 2026-11-06 23:15:15 UTC |
+| Request | `curl -X POST -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"eth_sendRawTransaction","params":["<raw 0x06 bytes>"]}' https://altmempool.forshtat.com` |
+| Response verbatim | `{"error":{"code":-32000,"message":"Invalid params: Frame transaction prefix gas budget (frames + sig cost) exceeds MAX_VERIFY_GAS"},"id":1,"jsonrpc":"2.0"}` |
+| Same transaction through alt mempool | Admitted by `https://altmempool.forshtat.com/rpc` via `eth_sendFrameTransaction`, mined in block 10041, `status: "success"` |
 
 ## 3. Sepolia (chain 11155111): real entries
 
