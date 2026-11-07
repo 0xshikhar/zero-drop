@@ -181,7 +181,7 @@ export function EphemeralNotice() {
 export function IdentityHint() {
   const s = useSession();
   if (s.status === "checking") return <p className="muted">Checking for a saved identity…</p>;
-  if (s.status === "locked") return <p className="muted">Your identity is locked. <a className="brass-link" href={toHref("/drop")}>Unlock it on the Post page</a>.</p>;
-  if (s.status === "legacy") return <p className="muted">An unencrypted identity is stored. <a className="brass-link" href={toHref("/drop")}>Protect it with a passphrase on the Post page</a>.</p>;
-  return <p className="muted">No identity yet. <a className="brass-link" href={toHref("/drop")}>Create one on the Post page</a>.</p>;
+  if (s.status === "locked") return <p className="muted">Your identity is locked. <a className="brass-link" href={toHref("/app")}>Unlock it on the App page</a>.</p>;
+  if (s.status === "legacy") return <p className="muted">An unencrypted identity is stored. <a className="brass-link" href={toHref("/app")}>Protect it with a passphrase on the App page</a>.</p>;
+  return <p className="muted">No identity yet. <a className="brass-link" href={toHref("/app")}>Create one on the App page</a>.</p>;
 }

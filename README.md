@@ -18,7 +18,7 @@ Dated 2026-11-06. "Verified" means it was run and the output is in this reposito
 | Canonical mempool rejection of the same transaction | **Live-verified:** Canonical node (`https://altmempool.forshtat.com`) directly rejected the identical raw transaction with `prefix gas budget (frames + sig cost) exceeds MAX_VERIFY_GAS` (`evidence/canonical-rejection.md`) |
 | Anon-RPC (Tor) transport | Implemented (`packages/core/src/net.ts`, boot states in the UI, CSP; Node SOCKS5h in `torsocks.ts`). Official EF Tor-JS contract (`0x700d...`) configured as default specifier; live SOCKS5h Tor egress verified with `torsocks.test.ts` (`check.torproject.org` reports `IsTor: true`). No silent fallback to direct |
 | Single-file build | Verified: one HTML file of about 1.95 MB, no external script, link, image or font reference (`scripts/check-single-file.ts`). Loads from `file://` in headless Chrome with no console error and no CSP violation (`scripts/check-file-url.ts`). Two clean builds were byte-identical on this machine (`evidence/ipfs-pin.md`) |
-| IPFS | **Live-pinned and published to IPFS**: UnixFS DAG CID `bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce` and single-block raw CID `bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi`. Verified byte-identical across gateways and local Kubo. Accessible via `ipfs.filebase.io`, `ipfs.io`, `cloudflare-ipfs.com`, `dweb.link`, and `eth.limo` |
+| IPFS | **Live-pinned and published to IPFS**: UnixFS DAG CID `bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei` and single-block raw CID `bafkreihevxfpv367gpv4ct72anp4qp4dkno65vp7idj6onax6o7ihngafa`. Verified byte-identical across gateways and local Kubo. Accessible via `ipfs.io`, `cloudflare-ipfs.com`, `dweb.link`, and `eth.limo` |
 | Document pinning (`pin.ts`, `scripts/pinner.ts`) | Verified against a real Kubo node (the `kubo-live` test, 4 tests, re-run 2026-11-06 against the offline node) and by an earlier opt-in read of public gateways (commit `9746c92`; not re-run for this README). Publishing to public pinners has not been done |
 | Own sidecar (`sidecar/run.sh`) | Launcher written; `--check` and `--print` run. **Nothing was started**: no checkout of the upstream sidecar, Docker daemon off |
 | PDF metadata stripping | Implemented: structural object-tree stripping using `pdf-lib` (drops Info, XMP, DocumentID, and scripts; 8 unit tests passing) |
@@ -35,14 +35,14 @@ Dated 2026-11-06. "Verified" means it was run and the output is in this reposito
 ```sh
 pnpm verify:frontend
 ```
-Verifies that `apps/web/dist/index.html` is 100% self-contained, reproducible, matches the release manifest in `config/release.json` (SHA-256 `8d316148...` and IPFS CIDv1 `bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi`), has 0 CSP violations, and loads zero external scripts, stylesheets, fonts, or CDNs. Exits non-zero on any hash or CSP deviation.
+Verifies that `apps/web/dist/index.html` is 100% self-contained, reproducible, matches the release manifest in `config/release.json` (SHA-256 `e4adcafa...` and IPFS CIDv1 `bafkreihevxfpv367gpv4ct72anp4qp4dkno65vp7idj6onax6o7ihngafa`), has 0 CSP violations, and loads zero external scripts, stylesheets, fonts, or CDNs. Exits non-zero on any hash or CSP deviation.
 
 ### 2. Live IPFS Gateways & ENS Decentralized Access
 The single-file app is pinned on IPFS and accessible through public gateways or ENS:
-- **Filebase IPFS Gateway:** [ipfs.filebase.io/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce](https://ipfs.filebase.io/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce)
-- **IPFS.io Gateway:** [ipfs.io/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce](https://ipfs.io/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce)
-- **Cloudflare IPFS:** [cloudflare-ipfs.com/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce](https://cloudflare-ipfs.com/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce)
-- **ENS / eth.limo:** Point any ENS content hash to `ipfs://bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce` to access via `https://<name>.eth.limo`
+- **4EVERLAND Gateway:** [bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei.ipfs.4everland.io](https://bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei.ipfs.4everland.io)
+- **IPFS.io Gateway:** [ipfs.io/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei](https://ipfs.io/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei)
+- **Cloudflare IPFS:** [cloudflare-ipfs.com/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei](https://cloudflare-ipfs.com/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei)
+- **ENS / eth.limo:** Point any ENS content hash to `ipfs://bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei` to access via `https://<name>.eth.limo`
 - **Architecture Deep-Dive:** See [docs/MAIN_FEATURES.md](docs/MAIN_FEATURES.md) for the complete CROPS breakdown, "Why This vs That" (Single-File vs Next.js, EIP-8141 vs 4337), and threat models.
 
 ### 3. Plug-and-Play Backend (One Command)
@@ -117,10 +117,10 @@ The anvil default account key used by the scripts is a public test key; never us
 
 - **C (Censorship Resistance):**
   - **Live IPFS Distribution:** The complete frontend is pinned and accessible via decentralized IPFS gateways:
-    - [Filebase Gateway](https://ipfs.filebase.io/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce)
-    - [IPFS.io Gateway](https://ipfs.io/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce)
-    - [Cloudflare IPFS](https://cloudflare-ipfs.com/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce)
-    - [dweb.link](https://dweb.link/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce)
+    - [4EVERLAND Gateway](https://bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei.ipfs.4everland.io)
+    - [IPFS.io Gateway](https://ipfs.io/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei)
+    - [Cloudflare IPFS](https://cloudflare-ipfs.com/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei)
+    - [dweb.link](https://dweb.link/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei)
   - **Walkaway file:// Execution:** Open `apps/web/dist/index.html` directly from disk (`file://`). Verified in headless Chrome: 0 external requests, 0 CSP errors.
   - **Ethereum Devnet & Testnet:** Contracts deployed and staked:
     - Devnet (Chain 1337): ZeroDrop at `0x419cfe85e77a0a26b9989059057318f59764f7c5`, Staking Registry at `0xd51ca2bb4c3da16053f3ff992d9bc99c43d839bb`.

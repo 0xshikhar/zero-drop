@@ -18,6 +18,7 @@ import { loadGroups, readClient, requireDeployment, type GroupView } from "../li
 import { networkGate, useBootState, useNetworkPlan } from "../lib/network";
 import { describeEndpoint, effectivePinners } from "../lib/pinners";
 import { frameAvailability, initialSteps, proofBlocker, runPost, PostCancelled, type TimelineStep } from "../lib/post";
+import { readerHref } from "../lib/router";
 import { updatePrefs, useDeployment, usePrefs, useSettings } from "../lib/prefs";
 import { useSession } from "../lib/session";
 import { download, errorMessage, formatBytes, bundleMediaType, shareLink, short } from "../lib/util";
@@ -483,7 +484,7 @@ export function DropPage() {
               {done.transport === "direct" && <p className="small warning-text">The poster address is visible on chain for this transaction.</p>}
               <p className="field-label">Share link</p>
               <code className="digest" data-testid="share-link">{shareLink(done.cid)}</code>
-              <div className="actions tight"><CopyButton text={shareLink(done.cid)} label="Copy link" /><a className="brass-link" href={`#/d/${done.cid}`}>Open the reader view <span>→</span></a></div>
+              <div className="actions tight"><CopyButton text={shareLink(done.cid)} label="Copy link" /><a className="brass-link" href={readerHref(done.cid)}>Open the reader view <span>→</span></a></div>
               <p className="field-label">Transaction</p>
               <code className="digest" data-testid="tx-hash">{done.txHash}</code>
               <p className="small mono muted">

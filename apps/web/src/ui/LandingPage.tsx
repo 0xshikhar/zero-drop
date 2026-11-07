@@ -34,7 +34,7 @@ export function LandingPage() {
       {/* Navigation Header */}
       <header className="lp-header">
         <div className="lp-wrap lp-header-row">
-          <a className="lp-wordmark" href={toHref("/drop")}>
+          <a className="lp-wordmark" href={toHref("/")}>
             <div className="lp-wordmark-mark">ZD</div>
             ZeroDrop<span>/</span>protocol
           </a>
@@ -47,11 +47,12 @@ export function LandingPage() {
               <a href="#comparison" onClick={scrollTo("comparison")}>Comparison</a>
               <a href="#faq" onClick={scrollTo("faq")}>FAQ</a>
               <a href={toHref("/about")}>About</a>
+              <a href={toHref("/app")}>App</a>
             </div>
 
             <div className="lp-header-actions">
               <a className="lp-btn lp-btn-outline" href={toHref("/d/")}>Verify Leak</a>
-              <a className="lp-btn lp-btn-primary" href={toHref("/drop")}>Launch App</a>
+              <a className="lp-btn lp-btn-primary" href={toHref("/app")}>Launch App</a>
             </div>
           </nav>
 
@@ -73,9 +74,10 @@ export function LandingPage() {
             <a href="#comparison" onClick={scrollTo("comparison")}>Comparison</a>
             <a href="#faq" onClick={scrollTo("faq")}>FAQ</a>
             <a href={toHref("/about")}>About Protocol</a>
+            <a href={toHref("/app")}>Open App</a>
             <div style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
               <a className="lp-btn lp-btn-outline" style={{ flex: 1 }} href={toHref("/d/")}>Verify Leak</a>
-              <a className="lp-btn lp-btn-primary" style={{ flex: 1 }} href={toHref("/drop")}>Launch App</a>
+              <a className="lp-btn lp-btn-primary" style={{ flex: 1 }} href={toHref("/app")}>Launch App</a>
             </div>
           </div>
         )}
@@ -99,8 +101,8 @@ export function LandingPage() {
               </p>
 
               <div className="lp-hero-actions">
-                <a className="lp-btn lp-btn-ivory" href={toHref("/drop")}>
-                  <span>📄 Post a Document</span>
+                <a className="lp-btn lp-btn-ivory" href={toHref("/app")}>
+                  <span>📄 Open App / Post</span>
                 </a>
                 <a className="lp-btn lp-btn-outline" href={toHref("/d/")}>
                   <span>🔍 Verify a Disclosure</span>
@@ -219,7 +221,7 @@ export function LandingPage() {
                     </div>
                     <div className="lp-sim-footer">
                       <span>Bypasses canonical mempool 100k validation cap</span>
-                      <a href={toHref("/drop")} className="lp-sim-action-btn">Open Post Flow →</a>
+                      <a href={toHref("/app")} className="lp-sim-action-btn">Open Post Flow →</a>
                     </div>
                   </div>
                 )}
@@ -236,7 +238,7 @@ export function LandingPage() {
                     </div>
                     <div className="lp-sim-footer">
                       <span>Processed 100% in local memory before pinning</span>
-                      <a href={toHref("/drop")} className="lp-sim-action-btn">Test a File →</a>
+                      <a href={toHref("/app")} className="lp-sim-action-btn">Test a File →</a>
                     </div>
                   </div>
                 )}
@@ -573,8 +575,8 @@ export function LandingPage() {
               Explore the live prototype, test client-side metadata stripping, and inspect cryptographic storage proofs on chain.
             </p>
             <div className="lp-cta-actions">
-              <a className="lp-btn lp-btn-ivory" href={toHref("/drop")}>
-                <span>📄 Open Posting Flow</span>
+              <a className="lp-btn lp-btn-ivory" href={toHref("/app")}>
+                <span>📄 Open App / Post</span>
               </a>
               <a className="lp-btn lp-btn-outline" href={toHref("/d/")}>
                 <span>🔍 Lookup Disclosure</span>
@@ -594,7 +596,8 @@ export function LandingPage() {
             <strong>ZeroDrop</strong> · ETH Mumbai 2026 Prototype · Released under MIT License
           </div>
           <div className="lp-footer-nav">
-            <a href={toHref("/drop")}>Post</a>
+            <a href={toHref("/")}>Home</a>
+            <a href={toHref("/app")}>App</a>
             <a href={toHref("/d/")}>Read</a>
             <a href={toHref("/groups")}>Groups</a>
             <a href={toHref("/settings")}>Settings</a>

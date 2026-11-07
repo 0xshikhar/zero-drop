@@ -1,11 +1,12 @@
 {
   "version": "0.1.0",
   "name": "zerodrop-web",
-  "buildDate": "2026-11-07T06:38:30Z",
+  "buildDate": "2026-11-07T07:27:00Z",
   "distFile": "apps/web/dist/index.html",
-  "sizeBytes": 1978776,
-  "sha256": "8d316148f06b1a9331db2d2e41fecc301d987e0481b1adb00cd4110c8a584892",
-  "cidRaw": "bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi",
+  "sizeBytes": 1978689,
+  "sha256": "e4adcafaefdf33ebc14ffa035fc83f83535deed5ff40d3e73417f3be83b4c028",
+  "cidRaw": "bafkreihevxfpv367gpv4ct72anp4qp4dkno65vp7idj6onax6o7ihngafa",
+  "cidDag": "bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei",
   "singleFile": true,
   "externalDependencies": 0,
   "csp": {
@@ -15,12 +16,12 @@
     "cdns": 0
   },
   "gateways": [
-    "https://ipfs.io/ipfs/bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi",
-    "https://gateway.pinata.cloud/ipfs/bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi",
-    "https://cloudflare-ipfs.com/ipfs/bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi",
-    "https://dweb.link/ipfs/bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi",
-    "http://127.0.0.1:8080/ipfs/bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi"
+    "https://bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei.ipfs.4everland.io",
+    "https://ipfs.io/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei",
+    "https://cloudflare-ipfs.com/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei",
+    "https://dweb.link/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei",
+    "http://127.0.0.1:8080/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei"
   ],
-  "pinnedIpfsCid": "bafkreiengfqur4dldkjtdwznfza75tbqdwmh4bebwgw3adgucegiuwcisi",
-  "deployedAt": "2026-11-07T01:28:08.887Z"
+  "pinnedIpfsCid": "bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei",
+  "deployedAt": "2026-11-07T07:27:00.000Z"
 }

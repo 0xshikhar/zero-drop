@@ -30,7 +30,7 @@ export function isHashRouting(): boolean {
  * Returns the active internal route path, normalized without leading hashes or gateway prefixes.
  */
 export function getCurrentPath(): string {
-  if (typeof window === "undefined") return "/drop";
+  if (typeof window === "undefined") return "/";
 
   // If in hash mode (or if an explicit hash route exists):
   if (isHashRouting() || window.location.hash.startsWith("#/")) {
@@ -44,33 +44,40 @@ export function getCurrentPath(): string {
       }
       return fromHash;
     }
+    // Hash mode with empty hash: root landing path
+    if (isHashRouting()) {
+      return "/";
+    }
   }
 
   // Pathname mode (hosted domain / localhost)
   const pathname = window.location.pathname;
-  return pathname || "/drop";
+  return pathname || "/";
 }
 
 /**
  * Parses any path or hash string into a typed Route object.
  *
  * Supported paths:
- *   / or /drop   → drop (app posting flow)
- *   /d/<ref>     → reader (CID / storage proof verification)
- *   /groups      → groups (issuer membership management)
- *   /settings    → settings (transports, delays, pinners)
- *   /about       → about (threat model and design)
- *   /home        → home (product landing page showcase)
+ *   / or /home or /overview   → home (product landing page showcase)
+ *   /app or /drop or /post    → drop (app posting flow)
+ *   /d/<ref> or /reader/<ref> → reader (CID / storage proof verification)
+ *   /groups                   → groups (issuer membership management)
+ *   /settings                 → settings (transports, delays, pinners)
+ *   /about                    → about (threat model and design)
  */
 export function parseRoute(rawPath: string): Route {
   const path = rawPath.replace(/^#/, "");
   const [head, ...rest] = path.split("/").filter(Boolean);
 
-  if (head === "d") {
-    return { name: "reader", ref: decodeURIComponent(rest.join("/")) };
-  }
-  if (head === "home" || head === "overview") {
+  if (!head || head === "home" || head === "overview") {
     return { name: "home" };
+  }
+  if (head === "app" || head === "drop" || head === "post") {
+    return { name: "drop" };
+  }
+  if (head === "d" || head === "reader" || head === "read") {
+    return { name: "reader", ref: decodeURIComponent(rest.join("/")) };
   }
   if (head === "groups") {
     return { name: "groups" };
@@ -81,19 +88,20 @@ export function parseRoute(rawPath: string): Route {
   if (head === "about") {
     return { name: "about" };
   }
-  // Default is "drop" (App First)
-  return { name: "drop" };
+  // Default is "home" (Landing Page front door)
+  return { name: "home" };
 }
 
 /**
  * Generates an environment-aware href attribute.
  *
- * In clean path mode: returns `/drop`, `/d/123`, etc.
- * In hash mode (file:// or /ipfs/): returns `#/drop`, `#/d/123`, etc.
+ * In clean path mode: returns `/`, `/app`, `/d/123`, etc.
+ * In hash mode (file:// or /ipfs/): returns `#/`, `#/app`, `#/d/123`, etc.
  */
 export function toHref(path: string): string {
   const clean = path.startsWith("/") ? path : `/${path}`;
   if (isHashRouting()) {
+    if (clean === "/" || clean === "") return "#/";
     return `#${clean}`;
   }
   return clean;
@@ -115,7 +123,7 @@ export function navigate(path: string, options?: { replace?: boolean }): void {
   const clean = path.startsWith("/") ? path : `/${path}`;
 
   if (isHashRouting()) {
-    const targetHash = `#${clean}`;
+    const targetHash = clean === "/" ? "#/" : `#${clean}`;
     if (window.location.hash === targetHash) return;
     if (options?.replace) {
       const url = new URL(window.location.href);

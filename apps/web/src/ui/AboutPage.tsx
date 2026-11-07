@@ -78,9 +78,8 @@ export function AboutPage() {
         <h2>Verifiable Frontend (CROPS Walkaway)</h2>
         <p className="small muted">Meets the ETHBEAT &amp; EF CROPS standard: the distributed single-file bundle is 100% reproducible, verifiable in one click, and runs offline from <code className="mono">file://</code> or decentralized IPFS gateways with zero external dependencies.</p>
         <ul className="rows">
-          <li><span>Single-File Build</span><span className="small muted">1.97 MB · strictly inlined HTML+JS+CSS · 0 external fonts or CDNs</span></li>
-          <li><span>Build SHA-256</span><span className="small mono muted">8d316148f06b1a9331db2d2e41fecc301d987e0481b1adb00cd4110c8a584892</span></li>
-          <li><span>IPFS CIDv1</span><span className="small mono muted"><a className="brass-link" href="https://ipfs.filebase.io/ipfs/bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce" target="_blank" rel="noopener noreferrer">bafybeieo3hghqy7m5kcdmvjo42z3vnnhsiadushab3pmposahfkddxepce ↗</a></span></li>
+          <li><span>Single-File Build</span><span className="small muted">~1.98 MB · strictly inlined HTML+JS+CSS · 0 external fonts or CDNs</span></li>
+          <li><span>Release Manifest</span><span className="small mono muted">config/release.json (immutable SHA-256 and CID hash pins)</span></li>
           <li><span>One-Click Verify</span><span className="small mono muted">pnpm verify:frontend (verifies SHA, CID, CSP, and zero trackers)</span></li>
         </ul>
       </div>
