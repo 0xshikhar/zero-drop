@@ -53,9 +53,26 @@
 .lp-wrap {
   width: 100%;
   max-width: 1180px;
+  min-width: 0;
   margin: 0 auto;
   padding: 0 var(--lp-gutter);
   box-sizing: border-box;
+}
+
+/* Undo the app shell's reading-column rule if it is ever applied to this page. */
+.lp > main {
+  display: block;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lp > footer {
+  display: block;
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 /* ==========================================================================
@@ -83,17 +100,19 @@
 .lp-wordmark {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 19px;
+  gap: 10px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--text-primary);
   text-decoration: none;
+  white-space: nowrap !important;
+  flex-shrink: 0;
 }
 
 .lp-wordmark-mark {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
   background: linear-gradient(135deg, var(--accent-primary), #153A2C);
   border: 1px solid var(--accent-brass);
@@ -102,28 +121,31 @@
   color: var(--accent-brass-bright);
   font-size: 14px;
   font-weight: 800;
+  flex-shrink: 0;
 }
 
 .lp-wordmark span {
-  color: var(--accent-brass);
+  display: none;
 }
 
 .lp-nav {
   display: none;
 }
 
-@media (min-width: 900px) {
+@media (min-width: 960px) {
   .lp-nav {
     display: flex;
     align-items: center;
-    gap: 32px;
+    gap: 20px;
+    flex-shrink: 0;
   }
 }
 
 .lp-nav-links {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
+  flex-shrink: 0;
 }
 
 .lp-nav-links a {
@@ -133,6 +155,9 @@
   text-decoration: none;
   transition: color 0.15s ease;
   padding: 8px 0;
+  white-space: nowrap !important;
+  word-break: keep-all;
+  display: inline-block;
 }
 
 .lp-nav-links a:hover {
@@ -142,7 +167,9 @@
 .lp-header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-shrink: 0;
+  white-space: nowrap !important;
 }
 
 .lp-menu-button {
@@ -159,7 +186,7 @@
   cursor: pointer;
 }
 
-@media (min-width: 900px) {
+@media (min-width: 960px) {
   .lp-menu-button { display: none; }
 }
 
@@ -265,6 +292,10 @@
   align-items: center;
 }
 
+.lp-hero-grid > * {
+  min-width: 0;
+}
+
 @media (min-width: 960px) {
   .lp-hero-grid {
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
@@ -275,7 +306,10 @@
 .lp-eyebrow {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 6px 14px;
   border-radius: 99px;
   background: rgba(34, 83, 63, 0.3);
@@ -304,11 +338,12 @@
 
 .lp-h1 {
   font-family: var(--font-display);
-  font-size: clamp(2.75rem, 5.5vw + 1rem, 4.25rem);
+  font-size: clamp(2.35rem, 5.5vw + 1rem, 4.25rem);
   line-height: 1.04;
   letter-spacing: -0.03em;
   color: var(--text-primary);
   margin-bottom: 20px;
+  overflow-wrap: break-word;
 }
 
 .lp-hero-lede {
@@ -393,6 +428,10 @@
 }
 
 .lp-sim-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12.5px;
   font-family: var(--font-mono);
   color: var(--text-secondary);
@@ -419,8 +458,9 @@
 }
 
 .lp-sim-tab {
-  flex: 1;
-  padding: 12px 14px;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 12px 10px;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
@@ -455,7 +495,7 @@
 
 .lp-sim-row {
   display: grid;
-  grid-template-columns: 28px 1fr auto;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
@@ -493,6 +533,10 @@
   background: rgba(160, 115, 198, 0.2);
   border: 1px solid var(--shielded);
   color: var(--shielded-bright);
+}
+
+.lp-sim-row-content {
+  min-width: 0;
 }
 
 .lp-sim-row-content strong {
@@ -1001,6 +1045,31 @@
 @media (max-width: 720px) {
   .lp-evidence-grid {
     grid-template-columns: 1fr;
+  }
+
+  .lp-hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lp-hero-actions .lp-btn {
+    width: 100%;
+    white-space: normal;
+  }
+
+  .lp-sim-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .lp-sim-row-status {
+    grid-column: 2;
+  }
+
+  .lp-metrics-grid,
+  .lp-pipeline,
+  .lp-crops-grid,
+  .lp-evidence-grid {
+    min-width: 0;
   }
 }
 

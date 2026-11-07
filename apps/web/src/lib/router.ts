@@ -6,7 +6,8 @@ export type Route =
   | { name: "reader"; ref: string }
   | { name: "groups" }
   | { name: "settings" }
-  | { name: "about" };
+  | { name: "about" }
+  | { name: "support" };
 
 /**
  * Detects whether the app should run in hash routing mode (#/...) or clean pathname mode (/...).
@@ -87,6 +88,9 @@ export function parseRoute(rawPath: string): Route {
   }
   if (head === "about") {
     return { name: "about" };
+  }
+  if (head === "support" || head === "fund" || head === "donate") {
+    return { name: "support" };
   }
   // Default is "home" (Landing Page front door)
   return { name: "home" };

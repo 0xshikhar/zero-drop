@@ -1,24 +1,127 @@
-# ZeroDrop
+# ZeroDrop 💧
 
-**Leak the document, not yourself.** ZeroDrop lets a member of a group (a newsroom, a union, a port authority's staff) publish a document that anyone can check against that group's membership list without learning which member posted it. The document is stripped of metadata and fingerprinted, a Semaphore zero-knowledge proof ties the fingerprint to "one of the N members, once per case", and the record goes on chain. The design (docs/architecture.md) sends the record as an EIP-8141 frame transaction in which the contract is the sender and the payer, so the source needs no ETH and no wallet, through an alternative mempool, with every request over Anon-RPC (Tor), and ships as one HTML file with no backend. **The core anonymous frame transaction path and mempool admission are live-verified on the hackathon devnet (chain 1337).** The status table says exactly which parts run.
+<p align="center">
+  <strong>Leak the document, not yourself.</strong><br>
+  Private contributions, public evidence, and open access for disclosures that matter.
+</p>
+
+<p align="center">
+  <a href="https://github.com/shikhar-singh/zerodrop/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>
+  <a href="https://explorer.altmempool.wtf/tx/0x3f87e18e0d571b3a6f84f185367342022d7fa8a0ef3f91828dee76e3a9bbc9aa"><img src="https://img.shields.io/badge/Alt--Mempool-Block%2010041%20Mined-success?style=flat-square" alt="Alt Mempool Mined"></a>
+  <a href="https://sepolia.etherscan.io/tx/0x3e9b59d8253892e8fe41fc8e53154088e315bd1ca95d61bf3f166553c670948e"><img src="https://img.shields.io/badge/Sepolia-Block%2012079587%20Groth16-purple?style=flat-square" alt="Sepolia Verified"></a>
+  <a href="https://ipfs.io/ipfs/bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu"><img src="https://img.shields.io/badge/IPFS-bafybeic...-cyan?style=flat-square" alt="IPFS Pinned"></a>
+  <a href="#quickstart--one-click-verification"><img src="https://img.shields.io/badge/Build-Single%20File%20HTML-blue?style=flat-square" alt="Single-file build"></a>
+  <a href="#tests"><img src="https://img.shields.io/badge/Tests-218%20passed%20%C2%B7%2016%20skipped-yellow?style=flat-square" alt="218 tests passed and 16 skipped"></a>
+</p>
+
+---
+
+## Current implementation and trust boundaries
+
+ZeroDrop is an active prototype of this vision. The design below describes the intended system; capabilities vary by deployment and transaction path. Read this section before interpreting the architecture or evidence claims.
+
+| Area | What is available now | Important boundary |
+|---|---|---|
+| Devnet frame transaction | A frame transaction was admitted and mined on chain 1337 at block 10041. | Its VERIFY frame used a 300,000-gas development verifier. This demonstrates frame admission, not group membership. The canonical endpoint reported that it does not support transaction type 6. |
+| Semaphore membership | A separate Semaphore verifier transaction is recorded on Sepolia at block 12079587. | Browser proving circuit files are not included in the shipped app bundle. The devnet admission transaction and Sepolia proof evidence are separate results. |
+| Posting route | The frame path uses ZeroDrop as sender and payer. Direct posting is also available for development. | Direct posting makes the sender address public. Network and proof state are shown in the app for the selected deployment. |
+| Network privacy | Remote RPC can use the configured Anon-RPC transport after its bootstrap read. | Bootstrap and loopback traffic are exceptions. Wallet-submitted transactions use the wallet's configured provider. Review the session traffic meter and Settings. |
+| Document access | The app publishes by CID, checks retrieved bytes against the CID digest, and can export a `.zerodrop.json` bundle containing the document. | A CID identifies bytes; it does not guarantee that a pinner will keep serving them. Retain the bundle and use independent pinners where possible. |
+| Large files | Standard pinning currently supports files up to 1 MiB. | The large-file storage endowment contract and publishing path are not deployed. Storage price estimates are not a live service. |
+
+The app reports a missing membership check as unverified. A group-size display in this state is contextual only; it is not evidence that a group member posted the document.
+
+---
+
+## Executive Overview
+
+ZeroDrop is designed to let a member of a group (a newsroom, a union, a government agency) publish sensitive evidence that readers can verify came from **one of N eligible members** without learning which member posted it. The current application does not yet provide this full flow in the browser.
+
+### The Problem
+Today, whistleblowers face an impossible trade-off: **credibility requires proof, but proof destroys anonymity**.
+- **On-chain anchoring** requires gas (ETH), which requires an exchange account tied to government ID.
+- **Centralized relayers** and **SecureDrop** log the source's IP address and can censor them under legal pressure.
+- **Standard Mempools** reject transactions with high-gas verification rules.
+For a confidential source, metadata leakage isn't an inconvenience — it's an arrest.
+
+### The Intended ZeroDrop Model
+The intended system aims to reduce the funding trail and avoid dependence on a single relayer:
+1. **0-ETH Anonymous Writes:** The whistleblower proves membership using Semaphore zero-knowledge proofs. An **EIP-8141 Frame Transaction** makes the ZeroDrop contract both the sender and the fee payer (`from = ZeroDrop`, user balance = 0).
+2. **Alternative Mempool (ERC-8421):** The verification frame burns ~370,000 gas on-chain. While rejected verbatim by canonical nodes (`MAX_VERIFY_GAS` exceeded), it is admitted and mined via the ERC-8421 alternative mempool (**Block 10041 on Chain 1337**).
+3. **Anon-RPC over Tor:** Reads and writes route through an ephemeral Tor circuit via the official Ethereum Foundation Tor-JS contract.
+4. **ETHBEAT CROPS Walkaway Standard:** The complete application compiles to a **single 1.98 MB static HTML file** with 0 external scripts, 0 external styles, and strict CSP. It runs offline from `file://` or decentralized IPFS gateways even if all servers disappear.
+
+---
+
+## Intended Architecture Flow
+
+The diagram below describes the target system. See [Current implementation and trust boundaries](#current-implementation-and-trust-boundaries) and [`status.md`](status.md) for what has actually been run and what remains unavailable.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           WHISTLEBLOWER (CLIENT SIDE)                           │
+│                                                                                 │
+│  [Leaked Document] ──> [pdf-lib Structural Scrub] ──> [Raw SHA-256 Digest]     │
+│                                                              │                  │
+│  [Identity Vault]  ──> [Semaphore ZK Proof]       ───────────┼                  │
+│                        (Nullifier = Case Nonce)              │                  │
+│                                                              ▼                  │
+│                                            [EIP-8141 Frame Transaction]         │
+│                                            • Frame 0: VERIFY (>100k gas)        │
+│                                            • Frame 1: SENDER (Contract Pays)    │
+└──────────────────────────────────────┬──────────────────────────────────────────┘
+                                       │
+                      [Anon-RPC over Tor Circuit (SOCKS5h)]
+                                       │
+                 ┌─────────────────────┴─────────────────────┐
+                 │                                           │
+                 ▼                                           ▼
+   ❌ Canonical Mempool (100k Cap)             ✅ ERC-8421 Alternative Mempool
+   REJECTED: MAX_VERIFY_GAS exceeded           ADMITTED & MINED: Block 10041
+                                                             │
+                                                             ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          JOURNALIST / READER (CLIENT)                           │
+│                                                                                 │
+│  L0 Content Integrity  ──> Raw CIDv1 bytes match document digest                │
+│  L1 Storage Proof      ──> eth_getProof inclusion against Block 10041 root      │
+│  L2 ZK Verification    ──> Semaphore Groth16 verification of membership        │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Recorded On-Chain Evidence
+
+The following results are separate experiments, not one end-to-end production flow. See [`evidence/txs.md`](evidence/txs.md), [`evidence/canonical-rejection.md`](evidence/canonical-rejection.md), and [`status.md`](status.md) for details:
+
+| Network / Target | Milestone | On-Chain Proof / Evidence | Status |
+|---|---|---|---|
+| **Devnet (Chain 1337)** | **EIP-8141 Frame admission** | Tx [`0x3f87...`](https://explorer.altmempool.wtf/tx/0x3f87e18e0d571b3a6f84f185367342022d7fa8a0ef3f91828dee76e3a9bbc9aa) mined in **Block 10041**. VERIFY frame used 370,032 gas with a 300,000-gas development verifier. This is admission evidence, not membership-proof evidence. | **Mined** |
+| **Devnet canonical endpoint** | **Frame transaction rejection** | The identical transaction was rejected. The endpoint response and context are recorded in [`evidence/canonical-rejection.md`](evidence/canonical-rejection.md). | **Recorded** |
+| **Sepolia (Chain 11155111)** | **Semaphore verifier** | A separate Groth16 proof was accepted on-chain at Block 12079587 ([tx `0x3e9b59...`](https://sepolia.etherscan.io/tx/0x3e9b59d8253892e8fe41fc8e53154088e315bd1ca95d61bf3f166553c670948e)). This is separate from the devnet frame transaction. | **Mined** |
+| **Tor Network** | **Anon-RPC Egress** | EF Tor-JS contract (`0x700d...`) configured. SOCKS5h daemon verified in `torsocks.test.ts` (`check.torproject.org` reports `IsTor: true`). | ✅ **VERIFIED** |
+| **CROPS Walkaway** | **Single-File Frontend** | 1.98 MB HTML bundle loads from `file://` with 0 console errors and 0 CSP violations. Audit passes via `pnpm verify:frontend`. | ✅ **VERIFIED** |
+
+---
 
 ## Status
 
-Dated 2026-11-06. "Verified" means it was run and the output is in this repository or was observed by the author of this section; "built" means code exists and has not been shown to work in that setting.
+Dated 2026-11-07. "Verified" means it was run and the output is in this repository or was observed on-chain; "built" means code exists and has not been shown to work in that setting.
 
 | Piece | State |
 |---|---|
-| Contracts (`ZeroDrop`, mock and Semaphore verifier adapter, frame checks, staking) | Verified across 3 chains: 109 forge tests passing locally; deployed & locked with Semaphore on Sepolia (`0xc418...`); deployed & staked in `IStakingRegistry` on devnet (`0x419c...`) |
+| Contracts (`ZeroDrop`, development and Semaphore verifier adapter, frame checks, staking) | Deployed on Sepolia and devnet. The exact test and deployment evidence is recorded in `status.md` and `evidence/`. |
 | Real Semaphore v4 proof | Verified on public Sepolia testnet at block 12079587 (`0x3e9b59...`), local anvil (`evidence/txs.md`), and against negative controls (one-bit mutation rejected) |
 | Mock proof mode (`MockVerifier`, no ZK) | Live on devnet chain 1337 with a 300k gas burn standing in for Groth16 verification (`0x0b3a...`) |
 | Reader checks | L0 (content hash), L1 (inclusion via `eth_getProof` verified against block state root), and L2 (Semaphore ZK proof verification) |
-| Posting paths | **Dual path:** EIP-8141 Frame transaction (relayerless 0-ETH anonymous disclosure via alt-mempool, live on devnet chain 1337) and direct contract calls (available on Sepolia & anvil) |
+| Posting paths | **Dual path:** EIP-8141 frame transaction admission on devnet and direct contract calls on Sepolia and Anvil. Direct calls expose the sender address. |
 | EIP-8141 frame transaction, VERIFY fallback in the contract | **Live on chain 1337:** VERIFY fallback burned 370,032 gas on-chain; SENDER frame recorded disclosure in block 10041 (`0x3f87...`) |
 | Over-100k verification admitted by an alt mempool | **Live-verified:** 370k gas VERIFY frame admitted by `https://altmempool.forshtat.com/rpc` and mined on chain 1337 |
 | Canonical mempool rejection of the same transaction | **Live-verified:** Canonical node (`https://altmempool.forshtat.com`) directly rejected the identical raw transaction with `prefix gas budget (frames + sig cost) exceeds MAX_VERIFY_GAS` (`evidence/canonical-rejection.md`) |
 | Anon-RPC (Tor) transport | Implemented (`packages/core/src/net.ts`, boot states in the UI, CSP; Node SOCKS5h in `torsocks.ts`). Official EF Tor-JS contract (`0x700d...`) configured as default specifier; live SOCKS5h Tor egress verified with `torsocks.test.ts` (`check.torproject.org` reports `IsTor: true`). No silent fallback to direct |
 | Single-file build | Verified: one HTML file of about 1.95 MB, no external script, link, image or font reference (`scripts/check-single-file.ts`). Loads from `file://` in headless Chrome with no console error and no CSP violation (`scripts/check-file-url.ts`). Two clean builds were byte-identical on this machine (`evidence/ipfs-pin.md`) |
-| IPFS | **Live-pinned and published to IPFS**: UnixFS DAG CID `bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei` and single-block raw CID `bafkreihevxfpv367gpv4ct72anp4qp4dkno65vp7idj6onax6o7ihngafa`. Verified byte-identical across gateways and local Kubo. Accessible via `ipfs.io`, `cloudflare-ipfs.com`, `dweb.link`, and `eth.limo` |
+| IPFS | **Live-pinned and published to IPFS**: UnixFS DAG CID `bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu` and single-block raw CID `bafkreiaex3c6vbaj4xgzm7dtuyfmjvnwhb5xbgllxf4mqtorkk4cpo3wpi`. Verified byte-identical across gateways and local Kubo. Accessible via `ipfs.io`, `cloudflare-ipfs.com`, `dweb.link`, and `eth.limo` |
 | Document pinning (`pin.ts`, `scripts/pinner.ts`) | Verified against a real Kubo node (the `kubo-live` test, 4 tests, re-run 2026-11-06 against the offline node) and by an earlier opt-in read of public gateways (commit `9746c92`; not re-run for this README). Publishing to public pinners has not been done |
 | Own sidecar (`sidecar/run.sh`) | Launcher written; `--check` and `--print` run. **Nothing was started**: no checkout of the upstream sidecar, Docker daemon off |
 | PDF metadata stripping | Implemented: structural object-tree stripping using `pdf-lib` (drops Info, XMP, DocumentID, and scripts; 8 unit tests passing) |
@@ -35,14 +138,14 @@ Dated 2026-11-06. "Verified" means it was run and the output is in this reposito
 ```sh
 pnpm verify:frontend
 ```
-Verifies that `apps/web/dist/index.html` is 100% self-contained, reproducible, matches the release manifest in `config/release.json` (SHA-256 `e4adcafa...` and IPFS CIDv1 `bafkreihevxfpv367gpv4ct72anp4qp4dkno65vp7idj6onax6o7ihngafa`), has 0 CSP violations, and loads zero external scripts, stylesheets, fonts, or CDNs. Exits non-zero on any hash or CSP deviation.
+Verifies that `apps/web/dist/index.html` is self-contained and matches the SHA-256 and CID recorded in `config/release.json`. It also checks CSP and external asset references. Refresh the release manifest after rebuilding before distributing a new artifact.
 
 ### 2. Live IPFS Gateways & ENS Decentralized Access
 The single-file app is pinned on IPFS and accessible through public gateways or ENS:
-- **4EVERLAND Gateway:** [bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei.ipfs.4everland.io](https://bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei.ipfs.4everland.io)
-- **IPFS.io Gateway:** [ipfs.io/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei](https://ipfs.io/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei)
-- **Cloudflare IPFS:** [cloudflare-ipfs.com/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei](https://cloudflare-ipfs.com/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei)
-- **ENS / eth.limo:** Point any ENS content hash to `ipfs://bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei` to access via `https://<name>.eth.limo`
+- **4EVERLAND Gateway:** [bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu.ipfs.4everland.io](https://bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu.ipfs.4everland.io)
+- **IPFS.io Gateway:** [ipfs.io/ipfs/bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu](https://ipfs.io/ipfs/bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu)
+- **Cloudflare IPFS:** [cloudflare-ipfs.com/ipfs/bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu](https://cloudflare-ipfs.com/ipfs/bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu)
+- **ENS / eth.limo:** Point any ENS content hash to `ipfs://bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu` to access via `https://<name>.eth.limo`
 - **Architecture Deep-Dive:** See [docs/MAIN_FEATURES.md](docs/MAIN_FEATURES.md) for the complete CROPS breakdown, "Why This vs That" (Single-File vs Next.js, EIP-8141 vs 4337), and threat models.
 
 ### 3. Plug-and-Play Backend (One Command)
@@ -117,10 +220,10 @@ The anvil default account key used by the scripts is a public test key; never us
 
 - **C (Censorship Resistance):**
   - **Live IPFS Distribution:** The complete frontend is pinned and accessible via decentralized IPFS gateways:
-    - [4EVERLAND Gateway](https://bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei.ipfs.4everland.io)
-    - [IPFS.io Gateway](https://ipfs.io/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei)
-    - [Cloudflare IPFS](https://cloudflare-ipfs.com/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei)
-    - [dweb.link](https://dweb.link/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei)
+    - [4EVERLAND Gateway](https://bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu.ipfs.4everland.io)
+    - [IPFS.io Gateway](https://ipfs.io/ipfs/bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu)
+    - [Cloudflare IPFS](https://cloudflare-ipfs.com/ipfs/bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu)
+    - [dweb.link](https://dweb.link/ipfs/bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu)
   - **Walkaway file:// Execution:** Open `apps/web/dist/index.html` directly from disk (`file://`). Verified in headless Chrome: 0 external requests, 0 CSP errors.
   - **Ethereum Devnet & Testnet:** Contracts deployed and staked:
     - Devnet (Chain 1337): ZeroDrop at `0x419cfe85e77a0a26b9989059057318f59764f7c5`, Staking Registry at `0xd51ca2bb4c3da16053f3ff992d9bc99c43d839bb`.
@@ -129,7 +232,7 @@ The anvil default account key used by the scripts is a public test key; never us
   - MIT licensed throughout (`LICENSE`). Full source code, contracts, and tests in this monorepo.
   - One-click verifiable build: `pnpm verify:frontend` verifies SHA-256 integrity, single-file isolation, and zero CSP violations.
 - **P (Privacy):**
-  - **Anonymous Frame Execution:** EIP-8141 frame tx mined in devnet Block 10041 (`0x3f87dcc3...`). Contract is sender and payer (`from = 0x419cfe...`, source balance = 0).
+  - **Anonymous Frame Execution:** EIP-8141 frame tx mined in devnet Block 10041 (`0x3f87e18e...`). Contract is sender and payer (`from = 0x419cfe...`, source balance = 0).
   - **Anon-RPC Tor-JS:** Configured with EF Tor-JS contract (`0x700dA3193D35fA54Cd3fBf29B66f2a2A0385659e`) and public node bootstrap. Verified in `torsocks.test.ts` (8/8 passed).
   - **Metadata Redaction:** Structural PDF stripping via `pdf-lib` (removes metadata, XMP, attachments, JS while keeping text selectable); canvas re-encoding for images.
 - **S (Security):**

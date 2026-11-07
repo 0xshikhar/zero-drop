@@ -88,7 +88,9 @@ ol, ul { margin: 0; }
 .badge { display: inline-flex; align-items: center; max-width: 100%; padding: 4px 10px; border-radius: 99px; font-size: 12px; line-height: 1.4; border: 1px solid var(--border-hairline); color: var(--text-secondary); overflow-wrap: anywhere; }
 .badge-neutral { background: var(--bg-surface); }
 .badge-warning { color: var(--warning-bright); background: var(--warning-tint); border-color: transparent; }
-main { padding: var(--space-6) 0 var(--space-8); max-width: 720px; }
+/* Reading column for the app shell only. The landing page has its own <main>
+   and must not inherit this, or the whole page sticks to the left edge. */
+.shell main { padding: var(--space-6) 0 var(--space-8); max-width: 720px; }
 footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-3); padding: var(--space-5) 0 var(--space-6); border-top: 1px solid var(--border-hairline); color: var(--text-muted); font-size: 12px; }
 .meter { color: var(--text-secondary); font-size: 11.5px; }
 

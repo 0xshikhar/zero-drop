@@ -7,6 +7,7 @@ import { ReaderPage } from "./ReaderPage";
 import { GroupsPage } from "./GroupsPage";
 import { SettingsPage } from "./SettingsPage";
 import { AboutPage } from "./AboutPage";
+import { SupportPage } from "./SupportPage";
 
 const DEFAULT_DESCRIPTION = "Publish documents without publishing who you are.";
 
@@ -24,6 +25,10 @@ const ROUTE_META: Record<Route["name"], { title: string; description: string }> 
   groups: { title: "Issuer Groups · ZeroDrop", description: DEFAULT_DESCRIPTION },
   settings: { title: "Settings · ZeroDrop", description: DEFAULT_DESCRIPTION },
   about: { title: "About ZeroDrop", description: DEFAULT_DESCRIPTION },
+  support: {
+    title: "Support a Disclosure · ZeroDrop",
+    description: "Fund large-scale IPFS storage, top up the gas float, or donate to keep whistleblower disclosures online forever.",
+  },
 };
 
 export function App() {
@@ -54,6 +59,9 @@ export function App() {
       break;
     case "about":
       page = <AboutPage />;
+      break;
+    case "support":
+      page = <SupportPage />;
       break;
   }
 

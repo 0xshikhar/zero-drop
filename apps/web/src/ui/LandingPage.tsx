@@ -36,14 +36,14 @@ export function LandingPage() {
         <div className="lp-wrap lp-header-row">
           <a className="lp-wordmark" href={toHref("/")}>
             <div className="lp-wordmark-mark">ZD</div>
-            ZeroDrop<span>/</span>protocol
+            ZeroDrop
           </a>
 
           <nav className="lp-nav" aria-label="Main Navigation">
             <div className="lp-nav-links">
               <a href="#how-it-works" onClick={scrollTo("how-it-works")}>How It Works</a>
               <a href="#live-evidence" onClick={scrollTo("live-evidence")}>Live Evidence</a>
-              <a href="#crops" onClick={scrollTo("crops")}>CROPS Guarantee</a>
+              <a href="#crops" onClick={scrollTo("crops")}>CROPS</a>
               <a href="#comparison" onClick={scrollTo("comparison")}>Comparison</a>
               <a href="#faq" onClick={scrollTo("faq")}>FAQ</a>
               <a href={toHref("/about")}>About</a>
@@ -70,7 +70,7 @@ export function LandingPage() {
           <div className="lp-wrap lp-mobile-menu">
             <a href="#how-it-works" onClick={scrollTo("how-it-works")}>How It Works</a>
             <a href="#live-evidence" onClick={scrollTo("live-evidence")}>Live Evidence</a>
-            <a href="#crops" onClick={scrollTo("crops")}>CROPS Guarantee</a>
+            <a href="#crops" onClick={scrollTo("crops")}>CROPS</a>
             <a href="#comparison" onClick={scrollTo("comparison")}>Comparison</a>
             <a href="#faq" onClick={scrollTo("faq")}>FAQ</a>
             <a href={toHref("/about")}>About Protocol</a>
@@ -90,13 +90,13 @@ export function LandingPage() {
             <div>
               <div className="lp-eyebrow">
                 <span className="lp-pulse-dot" />
-                <span>Devcon 8 · Alt-Mempool (EIP-8141) & Anon-RPC</span>
+                <span>Alt-Mempool (EIP-8141) & Anon-RPC</span>
               </div>
 
               <h1 className="lp-h1">Leak the document, not yourself.</h1>
 
               <p className="lp-hero-lede">
-                The first <strong>relayerless, zero-knowledge disclosure protocol</strong>. 
+                The first <strong>relayerless, zero-knowledge disclosure protocol</strong>.
                 Publish authentic disclosures cryptographically proven from verified groups — with <strong>0 ETH, 0 servers, and 0 IP leaks</strong>.
               </p>
 
@@ -294,10 +294,10 @@ export function LandingPage() {
                 <div className="lp-evidence-chain">Chain 1337 · Devnet</div>
                 <div className="lp-evidence-title">EIP-8141 Frame Transaction</div>
                 <div className="lp-evidence-detail">Block 10041 · 652 bytes · &gt;100k gas VERIFY frame submitted to alt-mempool and confirmed by canonical node</div>
-                <div className="lp-evidence-hash">0x3f87dcc3…2bf7a01</div>
+                <div className="lp-evidence-hash">0x3f87e18e…9bbc9aa</div>
                 <a
                   className="lp-evidence-link"
-                  href="https://explorer.altmempool.wtf/tx/0x3f87dcc38a4bd57e73c2b0e9b7e82ed37a35e8c7c3451d3f48cb9f47e2bf7a01"
+                  href="https://explorer.altmempool.wtf/tx/0x3f87e18e0d571b3a6f84f185367342022d7fa8a0ef3f91828dee76e3a9bbc9aa"
                   target="_blank"
                   rel="noopener noreferrer"
                 >

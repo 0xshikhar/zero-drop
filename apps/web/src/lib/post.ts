@@ -184,7 +184,7 @@ export async function runPost(input: PostInput): Promise<PostOutcome> {
       scopeHash: proof.scopeHash,
     });
     if (!ok) fail("proving", "Local proof check failed");
-    set("proving", { status: "done", detail: `Groth16 proof generated and checked locally. Depth ${proof.depth}, root ${proof.root.toString(16).slice(0, 12)}…` });
+    set("proving", { status: "done", detail: `Groth16 (BN254) proof generated and verified locally. Depth ${proof.depth}, root ${proof.root.toString(16).slice(0, 12)}…. On-chain: SemaphoreVerifierAdapter → ISemaphoreVerifier (locked on Sepolia).` });
   }
 
   const args7 = [view.groupId, caseId, cidDigest, proof.root, proof.nullifier, BigInt(proof.depth), proof.proofBytes] as const;

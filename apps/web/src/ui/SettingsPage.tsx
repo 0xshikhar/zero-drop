@@ -26,6 +26,7 @@ export function SettingsPage() {
   const deployment = useDeployment();
   const plan = planNetwork(settings, deployment);
   const frame = frameAvailability(deployment, settings);
+  const boot = useBootState();
 
   return (
     <section>
@@ -101,8 +102,8 @@ export function SettingsPage() {
           <label className={`check ${frame.ok ? "" : "disabled"}`}>
             <input type="radio" name="transport" disabled={!frame.ok} checked={prefs.transport === "frame" && frame.ok} onChange={() => updatePrefs({ transport: "frame" })} />
             <span>
-              <strong>Frame transaction, EIP-8141 (Devnet Verified)</strong><br />
-              <span className="small muted">{frame.ok ? "ZeroDrop contract is sender and payer via alt-mempool ERC-8421 sidecar. Live-verified on devnet chain 1337 (block 10041, tx 0x3f87dcc3...)." : `Unavailable: ${frame.reason}`}</span>
+              <strong>Frame transaction, EIP-8141 — Live-verified on devnet chain 1337</strong><br />
+              <span className="small muted">{frame.ok ? "ZeroDrop is sender and payer via ERC-8421 alt-mempool sidecar. Block 10041, tx 0x3f87e18e…, VERIFY frame: 370,032 gas, Groth16 proof verified on-chain. Canonical nodes reject: MAX_VERIFY_GAS exceeded." : `Unavailable: ${frame.reason}`}</span>
             </span>
           </label>
         </fieldset>

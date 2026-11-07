@@ -21,7 +21,7 @@ const distFile = resolve(root, "apps/web/dist/index.html");
 
 console.log("\n=======================================================");
 console.log("  ZeroDrop: One-Click Verifiable Frontend Verification ");
-console.log("  Target: ETHBEAT / CROPS Walkaway Standard (Devcon 8)");
+console.log("  Target: ETHBEAT / CROPS Walkaway Standard");
 console.log("=======================================================\n");
 
 if (!existsSync(distFile)) {

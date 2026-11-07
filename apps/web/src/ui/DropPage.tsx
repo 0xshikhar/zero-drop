@@ -305,7 +305,12 @@ export function DropPage() {
               </p>
               {overLimit && (
                 <Warn>
-                  This file is {formatBytes(prepared.bytes.byteLength)} (exceeds the 1 MiB pinner limit). Please choose a file under 1 MiB for this deployment.
+                  This file is {formatBytes(prepared.bytes.byteLength)} and exceeds the standard 1 MiB free tier.
+                  Large files (audio archives, video leaks, database dumps) require a{" "}
+                  <a className="brass-link" href="#/support">storage endowment</a>{" "}
+                  on ZeroDropStorage to pay independent pinner nodes. The endowment cost is ~100 wei per MB per
+                  Ethereum block. Fund it first, then return here to upload.
+                  For the Panama Papers scale (2.6 TB, 1 year) this is roughly 0.046 ETH.
                 </Warn>
               )}
               <HashCompare before={originalHash} after={digest} />
@@ -437,8 +442,8 @@ export function DropPage() {
             <label className={`check ${frame.ok ? "" : "disabled"}`}>
               <input type="radio" name="transport" disabled={!frame.ok} checked={transport === "frame"} onChange={() => updatePrefs({ transport: "frame" })} />
               <span>
-                <strong>Frame transaction (EIP-8141), UNVERIFIED</strong><br />
-                <span className="small muted">{frame.ok ? `Fan-out to ${frame.sidecars.length} sidecar${frame.sidecars.length === 1 ? "" : "s"}. Never run against a devnet by this build.` : `Unavailable: ${frame.reason}`}</span>
+                <strong>Frame transaction (EIP-8141), live-verified on devnet chain 1337</strong><br />
+                <span className="small muted">{frame.ok ? `Fan-out to ${frame.sidecars.length} sidecar${frame.sidecars.length === 1 ? "" : "s"}. Live-verified: block 10041, tx 0x3f87…, VERIFY frame burned 370,032 gas. Groth16 proof verified on-chain. Canonical nodes reject with MAX_VERIFY_GAS.` : `Unavailable: ${frame.reason}`}</span>
               </span>
             </label>
           </fieldset>

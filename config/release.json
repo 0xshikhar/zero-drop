@@ -1,12 +1,12 @@
 {
   "version": "0.1.0",
   "name": "zerodrop-web",
-  "buildDate": "2026-11-07T07:27:00Z",
+  "buildDate": "2026-11-07T10:52:00Z",
   "distFile": "apps/web/dist/index.html",
-  "sizeBytes": 1978689,
-  "sha256": "e4adcafaefdf33ebc14ffa035fc83f83535deed5ff40d3e73417f3be83b4c028",
-  "cidRaw": "bafkreihevxfpv367gpv4ct72anp4qp4dkno65vp7idj6onax6o7ihngafa",
-  "cidDag": "bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei",
+  "sizeBytes": 2000388,
+  "sha256": "04bec5ea8409e5cd967c73a60ac4d5b6387b70996bb978c84dd152b827bb767a",
+  "cidRaw": "bafkreiaex3c6vbaj4xgzm7dtuyfmjvnwhb5xbgllxf4mqtorkk4cpo3wpi",
+  "cidDag": "bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu",
   "singleFile": true,
   "externalDependencies": 0,
   "csp": {
@@ -16,12 +16,12 @@
     "cdns": 0
   },
   "gateways": [
-    "https://bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei.ipfs.4everland.io",
-    "https://ipfs.io/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei",
-    "https://cloudflare-ipfs.com/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei",
-    "https://dweb.link/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei",
-    "http://127.0.0.1:8080/ipfs/bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei"
+    "https://bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu.ipfs.4everland.io",
+    "https://ipfs.io/ipfs/bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu",
+    "https://cloudflare-ipfs.com/ipfs/bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu",
+    "https://dweb.link/ipfs/bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu",
+    "http://127.0.0.1:8080/ipfs/bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu"
   ],
-  "pinnedIpfsCid": "bafybeiboqt2cisqtla7gxgbj4giu2gnyluqsypzngudsfpztij7o6mjxei",
-  "deployedAt": "2026-11-07T07:27:00.000Z"
+  "pinnedIpfsCid": "bafybeic4croz3gb6v2le6lsokn5mq65bt4sbcgp2k4ow2uigcm7w5y4leu",
+  "deployedAt": "2026-11-07T10:52:00.000Z"
 }

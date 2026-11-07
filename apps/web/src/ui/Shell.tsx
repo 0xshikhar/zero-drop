@@ -28,13 +28,14 @@ export function Shell({ route, children }: { route: Route; children: ReactNode }
   return (
     <div className="shell">
       <header className="topbar">
-        <a className="wordmark" href={toHref("/")}>ZeroDrop<span>/</span>disclosures</a>
+        <a className="wordmark" href={toHref("/")}>ZeroDrop</a>
         <nav className="nav" aria-label="Main">
           <NavLink href={toHref("/")} active={route.name === "home"}>Home</NavLink>
           <NavLink href={toHref("/app")} active={route.name === "drop"}>App</NavLink>
           <NavLink href={toHref("/d/")} active={route.name === "reader"}>Read</NavLink>
           <NavLink href={toHref("/groups")} active={route.name === "groups"}>Groups</NavLink>
           <NavLink href={toHref("/settings")} active={route.name === "settings"}>Settings</NavLink>
+          <NavLink href={toHref("/support")} active={route.name === "support"}>Support</NavLink>
           <NavLink href={toHref("/about")} active={route.name === "about"}>About</NavLink>
         </nav>
       </header>
